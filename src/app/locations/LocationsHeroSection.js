@@ -1,13 +1,48 @@
+import { useState, useEffect } from "react";
 import Image from "next/image";
 
 export default function LocationsHeroSection({ title, slug, alt }) {
-  const videoPath = `/videos/nc_${slug}_hero.mp4`;
-  const logoPath = `/logos/nc_${slug}_hero.png`;
+  const defaultVideoPath = "/videos/nc_default_hero.mp4";
+  const defaultLogoPath = "/logos/nc_default_hero.png";
+
+  const [videoPath, setVideoPath] = useState(defaultVideoPath);
+  const [logoPath, setLogoPath] = useState(defaultLogoPath);
+
+  useEffect(() => {
+    const verifyFiles = async () => {
+      if (slug) {
+        const customVideoPath = `/videos/nc_${slug}_hero.mp4`;
+        const customLogoPath = `/logos/nc_${slug}_hero.png`;
+
+        // Check if custom video exists
+        try {
+          const videoResponse = await fetch(customVideoPath, { method: "HEAD" });
+          if (videoResponse.ok) {
+            setVideoPath(customVideoPath);
+          }
+        } catch (err) {
+          console.error("Video not found:", customVideoPath);
+        }
+
+        // Check if custom logo exists
+        try {
+          const logoResponse = await fetch(customLogoPath, { method: "HEAD" });
+          if (logoResponse.ok) {
+            setLogoPath(customLogoPath);
+          }
+        } catch (err) {
+          console.error("Logo not found:", customLogoPath);
+        }
+      }
+    };
+
+    verifyFiles();
+  }, [slug]);
 
   return (
     <section className="w-full h-screen flex items-center justify-center relative">
       {/* Background Video */}
-      <div className="bg-base opacity-25 w-full h-full absolute">
+      <div className="bg-base opacity-70 w-full h-full absolute">
         <video
           src={videoPath}
           autoPlay

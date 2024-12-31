@@ -18,8 +18,8 @@ export default function NavLinks({ menuOpen }) {
             <NavLinkItem href="/locations" currentPath={currentPath}>
                 Locations
             </NavLinkItem>
-            <NavLinkItem href="/projects" currentPath={currentPath}>
-                Projects
+            <NavLinkItem href="/add-video" currentPath={currentPath}>
+                Add Videos
             </NavLinkItem>
             <NavLinkItem href="/contact" currentPath={currentPath}>
                 Contact

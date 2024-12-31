@@ -14,8 +14,30 @@ body {
   --accent: var(--pink);
 }
 
+/* Style the control bar background */
+.vjs-control-bar {
+  background-color: var(--crust) !important;
+  opacity: 0.7 !important;
+  /* Darken control bar */
+}
+
+/* Style individual controls */
+.video-js .vjs-play-control,
+.video-js .vjs-volume-panel,
+.video-js .vjs-fullscreen-control,
+.video-js .vjs-live-display {
+  color: var(--text);
+  /* Set icon colors to white */
+}
+
+/* Change the button color on hover */
+.video-js .vjs-control:hover {
+  color: var(--accent);
+  /* Accent color on hover */
+}
+
 .page-container {
-  @apply text-left 2xl:w-8/12 xl:w-9/12 lg:w-10/12 w-11/12 mx-auto my-8 lg:my-16;
+  @apply text-left 2xl:w-8/12 xl:w-9/12 lg:w-10/12 w-11/12 mx-auto my-28;
 }
 .section-container {
   @apply bg-surface0 p-6 rounded-lg shadow-lg;

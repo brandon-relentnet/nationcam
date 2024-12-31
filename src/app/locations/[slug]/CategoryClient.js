@@ -54,7 +54,7 @@ export default function CategoryClient({ slug }) {
             <div className="page-container">
                 {videos.length > 0 ? (
                     <>
-                        <h2 className="mb-4">Currently available streams.</h2>
+                        <h2 className="mb-4">Here are some of our Local Cameras!</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 section-container">
                             {videos.map((video) => (
                                 <div
