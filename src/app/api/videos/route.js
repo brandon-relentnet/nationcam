@@ -1,4 +1,8 @@
-import db from "@/lib/db";
+import { fetchFromTable } from '@/lib/apiHelper';
+
+export async function GET() {
+    return fetchFromTable('videos');
+}
 
 export async function POST(req) {
     try {
