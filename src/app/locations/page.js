@@ -11,7 +11,7 @@ export default function LocationsPage() {
             try {
                 const res = await fetch('/api/categories');
                 const result = await res.json();
-                console.log('Categories data:', result); // Log API response
+                // console.log('Categories data:', result);
                 if (result.success && Array.isArray(result.data)) {
                     setCategories(result.data);
                 } else {
@@ -27,7 +27,7 @@ export default function LocationsPage() {
     }, []);
 
     return (
-        <div className="page-container mx-auto p-4">
+        <div className="page-container">
             <h1 className="mb-4">Locations</h1>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {categories.map((category) => (

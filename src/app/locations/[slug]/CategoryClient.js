@@ -1,5 +1,6 @@
 "use client";
 
+import HeroSection from "@/components/HeroSection";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 
@@ -29,7 +30,7 @@ export default function CategoryClient({ slug }) {
                         const vidRes = await fetch(`/api/videos/${category.category_id}`);
                         const vidData = await vidRes.json();
 
-                        console.log('Fetched videos:', vidData); // Debug videos
+                        console.log("Fetched videos:", vidData); // Debug videos
                         setVideos(Array.isArray(vidData) ? vidData : []);
                     }
                 }
@@ -48,30 +49,32 @@ export default function CategoryClient({ slug }) {
     }
 
     return (
-        <div>
-            <h1>{categoryName || "Unknown Category"}</h1>
-            {videos.length > 0 ? (
-                videos.map((video) => (
-                    <div key={video.video_id} style={{ marginBottom: "20px" }}>
-                        <h3>{video.title}</h3>
-                        <VideoPlayer
-                            options={{
-                                controls: true,
-                                responsive: true,
-                                fluid: true,
-                                sources: [
-                                    {
-                                        src: video.src,
-                                        type: video.type || "video/mp4",
-                                    },
-                                ],
-                            }}
-                        />
-                    </div>
-                ))
-            ) : (
-                <p>No videos available for this location.</p>
-            )}
-        </div>
+        <>
+            <HeroSection title={categoryName} slug={slug} alt={categoryName} />
+            <div className="page-container">
+                {videos.length > 0 ? (
+                    videos.map((video) => (
+                        <div key={video.video_id} style={{ marginBottom: "20px" }}>
+                            <h3>{video.title}</h3>
+                            <VideoPlayer
+                                options={{
+                                    controls: true,
+                                    responsive: true,
+                                    fluid: true,
+                                    sources: [
+                                        {
+                                            src: video.src,
+                                            type: video.type || "video/mp4",
+                                        },
+                                    ],
+                                }}
+                            />
+                        </div>
+                    ))
+                ) : (
+                    <p>No videos available for this location.</p>
+                )}
+            </div>
+        </>
     );
 }

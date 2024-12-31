@@ -15,7 +15,7 @@ body {
 }
 
 .page-container {
-  @apply text-left 2xl:w-8/12 xl:w-9/12 lg:w-10/12 w-11/12 mx-auto lg:my-28 my-12;
+  @apply text-left 2xl:w-8/12 xl:w-9/12 lg:w-10/12 w-11/12 mx-auto my-28;
 }
 .section-container {
   @apply bg-surface0 p-4 rounded-lg shadow-lg;
