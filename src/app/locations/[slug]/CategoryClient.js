@@ -53,24 +53,35 @@ export default function CategoryClient({ slug }) {
             <LocationsHeroSection title={categoryName} slug={slug} alt={categoryName} />
             <div className="page-container">
                 {videos.length > 0 ? (
-                    videos.map((video) => (
-                        <div key={video.video_id} style={{ marginBottom: "20px" }}>
-                            <h3>{video.title}</h3>
-                            <VideoPlayer
-                                options={{
-                                    controls: true,
-                                    responsive: true,
-                                    fluid: true,
-                                    sources: [
-                                        {
-                                            src: video.src,
-                                            type: video.type || "video/mp4",
-                                        },
-                                    ],
-                                }}
-                            />
+                    <>
+                        <h2 className="mb-4">Currently available streams.</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 section-container">
+                            {videos.map((video) => (
+                                <div
+                                    key={video.video_id}
+                                >
+                                    <h3>{video.title}</h3>
+                                    <VideoPlayer
+                                        options={{
+                                            controls: true,
+                                            responsive: true,
+                                            fluid: true,
+                                            autoplay: true,
+                                            muted: true,
+                                            sources: [
+                                                {
+                                                    src: video.src,
+                                                    type: video.type || "video/mp4",
+                                                },
+                                            ],
+                                            className: "rounded",
+                                        }}
+                                    />
+                                </div>
+                            )
+                            )}
                         </div>
-                    ))
+                    </>
                 ) : (
                     <p>No videos available for this location.</p>
                 )}
