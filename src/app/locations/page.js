@@ -27,17 +27,31 @@ export default function LocationsPage() {
     }, []);
 
     return (
-        <div>
-            <h1>Locations</h1>
-            <ul>
+        <div className="page-container mx-auto p-4">
+            <h1 className="mb-4">Locations</h1>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {categories.map((category) => (
-                    <li key={category.category_id}>
-                        <Link href={`/locations/${category.slug}`}>
-                            {category.name}
-                        </Link>
-                    </li>
+                    <Link
+                        key={category.category_id}
+                        href={`/locations/${category.slug}`}
+                        className={`block p-4 rounded shadow-md border-2 border-transparent hover:border-accent transition duration-300 ${category.video_count > 0
+                            ? 'bg-surface0 text-accent'
+                            : 'bg-mantle text-subtext1'
+                            }`}
+                    >
+                        <div>
+                            <span className="font-semibold text-lg hover:underline block">
+                                {category.name}
+                            </span>
+                            <p className="text-sm text-subtext0">
+                                {category.video_count > 0
+                                    ? `${category.video_count} video(s) available`
+                                    : 'Coming soon...'}
+                            </p>
+                        </div>
+                    </Link>
                 ))}
-            </ul>
+            </div>
         </div>
     );
 }

@@ -9,7 +9,13 @@ function generateSlug(name) {
 
 export async function GET() {
     try {
-        const [categories] = await db.query('SELECT * FROM categories');
+        // Fetch categories with video count
+        const [categories] = await db.query(`
+            SELECT 
+                c.*, 
+                (SELECT COUNT(*) FROM videos v WHERE v.category_id = c.category_id) AS video_count
+            FROM categories c
+        `);
 
         // Add slugs dynamically
         const categoriesWithSlugs = categories.map((category) => ({
