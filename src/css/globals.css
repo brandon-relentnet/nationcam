@@ -11,7 +11,7 @@ body {
 }
 
 :root {
-  --accent: var(--pink);
+  --accent: var(--green);
 }
 
 /* Style the control bar background */
