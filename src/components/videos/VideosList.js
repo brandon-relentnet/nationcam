@@ -33,7 +33,7 @@ export default function VideosList() {
             <ul>
                 {videos.map((video, index) => (
                     <li key={video.id || index}> {/* Fallback to `index` if `id` is missing */}
-                        <strong>{video.title}</strong> - {video.description}
+                        <strong>{video.title}</strong> - {video.src}
                     </li>
                 ))}
             </ul>

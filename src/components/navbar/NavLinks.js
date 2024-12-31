@@ -15,8 +15,8 @@ export default function NavLinks({ menuOpen }) {
             <NavLinkItem href="/" currentPath={currentPath}>
                 Home
             </NavLinkItem>
-            <NavLinkItem href="/about" currentPath={currentPath}>
-                About
+            <NavLinkItem href="/locations" currentPath={currentPath}>
+                Locations
             </NavLinkItem>
             <NavLinkItem href="/projects" currentPath={currentPath}>
                 Projects
