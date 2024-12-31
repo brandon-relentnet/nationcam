@@ -1,23 +1,26 @@
 "use client";
 
-import { useEffect, useRef } from 'react';
-import videojs from 'video.js';
-import 'video.js/dist/video-js.css'; // Import Video.js CSS
+import { useEffect, useRef } from "react";
+import videojs from "video.js";
+import "video.js/dist/video-js.css";
 
 export default function VideoPlayer({ options }) {
     const videoRef = useRef(null);
     const playerRef = useRef(null);
 
     useEffect(() => {
-        // Initialize Video.js player
-        if (videoRef.current && !playerRef.current) {
-            playerRef.current = videojs(videoRef.current, options, () => {
-                console.log('Player is ready');
-            });
+        if (!videoRef.current) {
+            console.error("Video element not available in the DOM.");
+            return;
         }
 
+        // 1. Initialize Video.js
+        playerRef.current = videojs(videoRef.current, options, () => {
+            console.log("Player is ready");
+        });
+
+        // 2. Cleanup on unmount
         return () => {
-            // Dispose Video.js player on component unmount
             if (playerRef.current) {
                 playerRef.current.dispose();
                 playerRef.current = null;
@@ -26,10 +29,12 @@ export default function VideoPlayer({ options }) {
     }, [options]);
 
     return (
-        <div>
-            <div data-vjs-player>
-                <video ref={videoRef} className="video-js vjs-default-skin" />
-            </div>
+        <div data-vjs-player>
+            <video
+                ref={videoRef}
+                className="video-js vjs-default-skin"
+                playsInline
+            />
         </div>
     );
 }
