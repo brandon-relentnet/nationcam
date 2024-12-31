@@ -3,7 +3,6 @@ import dynamic from "next/dynamic";
 const Socials = dynamic(() => import('./Socials'));
 const ThemeSwitch = dynamic(() => import('./ThemeSwitch'));
 const ClientNavbar = dynamic(() => import('./ClientNavbar'));
-const ScrollProgressBar = dynamic(() => import('./ScrollProgressBar'));
 
 export default function Navbar() {
     return (
@@ -22,9 +21,6 @@ export default function Navbar() {
             <div className="flex justify-end items-center flex-1">
                 <ThemeSwitch />
             </div>
-
-            {/* Scroll Progress Bar */}
-            <ScrollProgressBar />
         </nav >
     );
 }

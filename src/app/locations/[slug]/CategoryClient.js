@@ -1,6 +1,6 @@
 "use client";
 
-import HeroSection from "@/components/HeroSection";
+import LocationsHeroSection from "../LocationsHeroSection";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 
@@ -50,7 +50,7 @@ export default function CategoryClient({ slug }) {
 
     return (
         <>
-            <HeroSection title={categoryName} slug={slug} alt={categoryName} />
+            <LocationsHeroSection title={categoryName} slug={slug} alt={categoryName} />
             <div className="page-container">
                 {videos.length > 0 ? (
                     videos.map((video) => (

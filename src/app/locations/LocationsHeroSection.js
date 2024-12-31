@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-export default function HeroSection({ title, slug, alt }) {
+export default function LocationsHeroSection({ title, slug, alt }) {
   const videoPath = `/videos/nc_${slug}_hero.mp4`;
   const logoPath = `/logos/nc_${slug}_hero.png`;
 
