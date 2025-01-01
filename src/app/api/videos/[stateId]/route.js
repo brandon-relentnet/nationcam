@@ -1,8 +1,7 @@
 import db from '@/lib/db';
 
-export async function GET(req, context) {
-    const { params } = context; // Extract params from context
-    const { stateId } = params; // Get the stateId from the route parameters
+export async function GET(req, { params }) {
+    const { stateId } = await params; // Await `params` to access `stateId`
 
     try {
         // Parse query parameters for sublocation_id if provided
