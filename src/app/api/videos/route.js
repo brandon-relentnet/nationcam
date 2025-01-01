@@ -1,24 +1,34 @@
-import { fetchFromTable } from '@/lib/apiHelper';
 import db from '@/lib/db';
 
-export async function GET() {
-    // Fetch all videos
+export async function GET(req) {
+    const url = new URL(req.url);
+    const sublocationId = url.searchParams.get("sublocation_id"); // Extract sublocation_id from query params
+
     try {
-        const [videos] = await db.query(`
+        let query = `
             SELECT v.*, s.name AS state_name, sub.name AS sublocation_name
             FROM videos v
             LEFT JOIN states s ON v.state_id = s.state_id
             LEFT JOIN sublocations sub ON v.sublocation_id = sub.sublocation_id
-        `);
+        `;
+        const params = [];
 
-        return new Response(JSON.stringify({ success: true, data: videos }), {
-            headers: { "Content-Type": "application/json" },
-        });
+        if (sublocationId) {
+            query += ` WHERE v.sublocation_id = ?`;
+            params.push(sublocationId);
+        }
+
+        const [videos] = await db.query(query, params);
+
+        return new Response(
+            JSON.stringify({ success: true, data: videos }),
+            { headers: { 'Content-Type': 'application/json' } }
+        );
     } catch (error) {
         console.error("Error fetching videos:", error);
         return new Response(
             JSON.stringify({ success: false, message: "Failed to fetch videos." }),
-            { status: 500, headers: { "Content-Type": "application/json" } }
+            { status: 500, headers: { 'Content-Type': 'application/json' } }
         );
     }
 }

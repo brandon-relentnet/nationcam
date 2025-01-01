@@ -53,10 +53,13 @@ export async function POST(req) {
             );
         }
 
+        // Generate slug
+        const slug = generateSlug(name);
+
         // Insert sublocation into the database
         const [result] = await db.query(
-            `INSERT INTO sublocations (name, description, state_id, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())`,
-            [name, description || null, state_id]
+            `INSERT INTO sublocations (name, description, state_id, slug, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())`,
+            [name, description || null, state_id, slug]
         );
 
         return new Response(

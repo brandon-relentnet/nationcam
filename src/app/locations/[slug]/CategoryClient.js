@@ -2,6 +2,7 @@
 
 import LocationsHeroSection from "../LocationsHeroSection";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const VideoPlayer = dynamic(() => import("@/components/videos/VideoPlayer"), {
@@ -11,6 +12,7 @@ const VideoPlayer = dynamic(() => import("@/components/videos/VideoPlayer"), {
 export default function CategoryClient({ slug }) {
     const [videos, setVideos] = useState([]);
     const [stateName, setStateName] = useState("");
+    const [sublocations, setSublocations] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -31,7 +33,14 @@ export default function CategoryClient({ slug }) {
                         const vidRes = await fetch(`/api/videos/${state.state_id}`);
                         const vidData = await vidRes.json();
 
-                        console.log("Fetched videos:", vidData); // Debug videos
+                        // Fetch sublocations for the state
+                        const subRes = await fetch("/api/sublocations");
+                        const subData = await subRes.json();
+                        const filteredSublocations = subData.data.filter(
+                            (sub) => sub.state_id === state.state_id
+                        );
+
+                        setSublocations(filteredSublocations);
                         setVideos(Array.isArray(vidData) ? vidData : []);
                     }
                 }
@@ -53,35 +62,69 @@ export default function CategoryClient({ slug }) {
         <>
             <LocationsHeroSection title={stateName} slug={slug} alt={stateName} />
             <div className="page-container">
-                {videos.length > 0 ? (
-                    <>
-                        <h2 className="mb-4">Here are some of our Local Cameras!</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 section-container">
-                            {videos.map((video) => (
-                                <div key={video.video_id}>
-                                    <h3>{video.title}</h3>
-                                    <VideoPlayer
-                                        options={{
-                                            controls: true,
-                                            responsive: true,
-                                            fluid: true,
-                                            autoplay: true,
-                                            muted: true,
-                                            sources: [
-                                                {
-                                                    src: video.src,
-                                                    type: video.type || "video/mp4",
-                                                },
-                                            ],
-                                            className: "rounded",
-                                        }}
-                                    />
-                                </div>
-                            ))}
+                {sublocations.map((sub) => (
+                    <div key={sub.sublocation_id} className="mb-8">
+                        <h3 className="text-xl font-semibold mb-4">
+                            <Link href={`/locations/${slug}/${sub.slug}`} className="text-accent hover:underline">
+                                {sub.name}
+                            </Link>
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                            {videos
+                                .filter((video) => video.sublocation_id === sub.sublocation_id)
+                                .map((video) => (
+                                    <div key={video.video_id}>
+                                        <h4>{video.title}</h4>
+                                        <VideoPlayer
+                                            options={{
+                                                controls: true,
+                                                responsive: true,
+                                                fluid: true,
+                                                autoplay: true,
+                                                muted: true,
+                                                sources: [
+                                                    {
+                                                        src: video.src,
+                                                        type: video.type || "video/mp4",
+                                                    },
+                                                ],
+                                                className: "rounded",
+                                            }}
+                                        />
+                                    </div>
+                                ))}
                         </div>
-                    </>
-                ) : (
-                    <p>No videos available for this location.</p>
+                    </div>
+                ))}
+                {videos.filter((video) => !video.sublocation_id).length > 0 && (
+                    <div>
+                        <h3 className="text-xl font-semibold mb-4">Uncategorized Videos</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                            {videos
+                                .filter((video) => !video.sublocation_id)
+                                .map((video) => (
+                                    <div key={video.video_id}>
+                                        <h4>{video.title}</h4>
+                                        <VideoPlayer
+                                            options={{
+                                                controls: true,
+                                                responsive: true,
+                                                fluid: true,
+                                                autoplay: true,
+                                                muted: true,
+                                                sources: [
+                                                    {
+                                                        src: video.src,
+                                                        type: video.type || "video/mp4",
+                                                    },
+                                                ],
+                                                className: "rounded",
+                                            }}
+                                        />
+                                    </div>
+                                ))}
+                        </div>
+                    </div>
                 )}
             </div>
         </>
