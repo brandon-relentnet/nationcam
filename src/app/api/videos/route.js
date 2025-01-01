@@ -1,18 +1,48 @@
 import { fetchFromTable } from '@/lib/apiHelper';
+import db from '@/lib/db';
 
 export async function GET() {
-    return fetchFromTable('videos');
+    // Fetch all videos
+    try {
+        const [videos] = await db.query(`
+            SELECT v.*, s.name AS state_name, sub.name AS sublocation_name
+            FROM videos v
+            LEFT JOIN states s ON v.state_id = s.state_id
+            LEFT JOIN sublocations sub ON v.sublocation_id = sub.sublocation_id
+        `);
+
+        return new Response(JSON.stringify({ success: true, data: videos }), {
+            headers: { "Content-Type": "application/json" },
+        });
+    } catch (error) {
+        console.error("Error fetching videos:", error);
+        return new Response(
+            JSON.stringify({ success: false, message: "Failed to fetch videos." }),
+            { status: 500, headers: { "Content-Type": "application/json" } }
+        );
+    }
 }
 
 export async function POST(req) {
     try {
         const data = await req.json();
-        const { title, src, type, category_id, status } = data;
+        const { title, src, type, state_id, sublocation_id, status } = data;
+
+        // Validate required fields
+        if (!title || !src || !type || !status) {
+            return new Response(
+                JSON.stringify({ success: false, message: "Missing required fields." }),
+                { status: 400, headers: { "Content-Type": "application/json" } }
+            );
+        }
 
         // Insert into the database
         const [result] = await db.query(
-            `INSERT INTO videos (title, src, type, category_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
-            [title, src, type, category_id, status]
+            `
+            INSERT INTO videos (title, src, type, state_id, sublocation_id, status, created_at, updated_at) 
+            VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
+            `,
+            [title, src, type, state_id || null, sublocation_id || null, status]
         );
 
         return new Response(

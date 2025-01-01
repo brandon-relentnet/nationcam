@@ -1,6 +1,6 @@
 import mysql from 'mysql2/promise';
 
-const pool = mysql.createPool({
+const db = mysql.createPool({
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     user: process.env.DB_USER,      
@@ -10,4 +10,4 @@ const pool = mysql.createPool({
     connectionLimit: 10,
 });
 
-export default pool;
+export default db;

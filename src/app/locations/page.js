@@ -1,52 +1,52 @@
 "use client";
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function LocationsPage() {
-    const [categories, setCategories] = useState([]);
+    const [states, setStates] = useState([]);
 
     useEffect(() => {
-        const fetchCategories = async () => {
+        const fetchStates = async () => {
             try {
-                const res = await fetch('/api/categories');
+                const res = await fetch("/api/states");
                 const result = await res.json();
-                // console.log('Categories data:', result);
+
                 if (result.success && Array.isArray(result.data)) {
-                    setCategories(result.data);
+                    setStates(result.data);
                 } else {
-                    setCategories([]);
+                    setStates([]);
                 }
             } catch (err) {
-                console.error('Error fetching categories:', err);
-                setCategories([]);
+                console.error("Error fetching states:", err);
+                setStates([]);
             }
         };
 
-        fetchCategories();
+        fetchStates();
     }, []);
 
     return (
         <div className="page-container">
             <h1 className="mb-4">Locations</h1>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {categories.map((category) => (
+                {states.map((state) => (
                     <Link
-                        key={category.category_id}
-                        href={`/locations/${category.slug}`}
-                        className={`block p-4 rounded shadow-md border-2 border-transparent hover:border-accent transition duration-300 ${category.video_count > 0
-                            ? 'bg-surface0 text-accent'
-                            : 'bg-mantle text-subtext1'
+                        key={state.state_id}
+                        href={`/locations/${state.slug}`}
+                        className={`block p-4 rounded shadow-md border-2 border-transparent hover:border-accent transition duration-300 ${state.video_count > 0
+                                ? "bg-surface0 text-accent"
+                                : "bg-mantle text-subtext1"
                             }`}
                     >
                         <div>
                             <span className="font-semibold text-lg hover:underline block">
-                                {category.name}
+                                {state.name}
                             </span>
                             <p className="text-sm text-subtext0">
-                                {category.video_count > 0
-                                    ? `${category.video_count} video(s) available`
-                                    : 'Coming soon...'}
+                                {state.video_count > 0
+                                    ? `${state.video_count} video(s) available`
+                                    : "Coming soon..."}
                             </p>
                         </div>
                     </Link>
