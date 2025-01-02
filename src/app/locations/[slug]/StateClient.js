@@ -1,5 +1,6 @@
 "use client";
 
+import AdvertisementLayout from "@/components/AdvertisementLayout";
 import LocationsHeroSection from "../LocationsHeroSection";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -62,6 +63,7 @@ export default function StateClient({ slug }) {
         <>
             <LocationsHeroSection title={stateName} slug={slug} alt={stateName} />
             <div className="page-container">
+                <AdvertisementLayout>
                 {sublocations.map((sub) => (
                     <div key={sub.sublocation_id} className="mb-8">
                         <h2 className="mb-4">
@@ -125,6 +127,7 @@ export default function StateClient({ slug }) {
                         </div>
                     </div>
                 )}
+                </AdvertisementLayout>
             </div>
         </>
     );

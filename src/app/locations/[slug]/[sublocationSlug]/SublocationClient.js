@@ -1,5 +1,6 @@
 "use client";
 
+import AdvertisementLayout from "@/components/AdvertisementLayout";
 import LocationsHeroSection from "../../LocationsHeroSection";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
@@ -60,34 +61,36 @@ export default function SublocationClient({ stateSlug, sublocationSlug }) {
         <>
             <LocationsHeroSection title={sublocationName} slug={sublocationSlug} alt={sublocationName} />
             <div className="page-container">
-                <h2 className="text-center">Here are some of our Local Cameras!</h2>
-                {videos.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 section-container">
-                        {videos.map((video) => (
-                            <div key={video.video_id}>
-                                <h6>{video.title}</h6>
-                                <VideoPlayer
-                                    options={{
-                                        controls: true,
-                                        responsive: true,
-                                        fluid: true,
-                                        autoplay: true,
-                                        muted: true,
-                                        sources: [
-                                            {
-                                                src: video.src,
-                                                type: video.type || "video/mp4",
-                                            },
-                                        ],
-                                        className: "rounded",
-                                    }}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <p>No videos available for this sublocation.</p>
-                )}
+                <AdvertisementLayout>
+                    <h2 className="text-center">Here are some of our Local Cameras!</h2>
+                    {videos.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 section-container">
+                            {videos.map((video) => (
+                                <div key={video.video_id}>
+                                    <h6>{video.title}</h6>
+                                    <VideoPlayer
+                                        options={{
+                                            controls: true,
+                                            responsive: true,
+                                            fluid: true,
+                                            autoplay: true,
+                                            muted: true,
+                                            sources: [
+                                                {
+                                                    src: video.src,
+                                                    type: video.type || "video/mp4",
+                                                },
+                                            ],
+                                            className: "rounded",
+                                        }}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p>No videos available for this sublocation.</p>
+                    )}
+                </AdvertisementLayout>
             </div>
         </>
     );
