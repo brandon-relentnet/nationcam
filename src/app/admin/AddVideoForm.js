@@ -87,6 +87,7 @@ export default function AddVideoForm({ states, sublocations }) {
 
     return (
         <div className="page-container">
+            <h2 className="mb-2">Cameras</h2>
             <form onSubmit={handleSubmit} className="space-y-4 section-container">
                 <div>
                     <label className="block font-semibold mb-1" htmlFor="title">
@@ -164,7 +165,7 @@ export default function AddVideoForm({ states, sublocations }) {
                 {errorMessage && <p className="text-red">{errorMessage}</p>}
                 <button
                     type="submit"
-                    className="bg-accent text-base p-2 rounded hover:bg-accent/5"
+                    className="bg-surface1 text-subtext0 hover:text-base p-2 rounded hover:bg-accent transition duration-300"
                 >
                     Add Video
                 </button>
@@ -172,3 +173,5 @@ export default function AddVideoForm({ states, sublocations }) {
         </div>
     );
 }
+
+

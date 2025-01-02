@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import AddVideoForm from "./AddVideoForm";
 import AddStateForm from "./AddStateForm";
 import AddSublocationForm from "./AddSublocationForm";
+import PasswordProtection from "@/components/PasswordProtection";
 
-export default function AddVideoPage() {
+function AddVideoPage() {
     const [states, setStates] = useState([]);
     const [sublocations, setSublocations] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -60,3 +61,5 @@ export default function AddVideoPage() {
         </>
     );
 }
+
+export default PasswordProtection(AddVideoPage, process.env.NEXT_PUBLIC_PAGE_PASSWORD);
