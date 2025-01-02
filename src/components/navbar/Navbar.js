@@ -3,6 +3,7 @@ import dynamic from "next/dynamic";
 const Socials = dynamic(() => import('./Socials'));
 const ThemeSwitch = dynamic(() => import('./ThemeSwitch'));
 const ClientNavbar = dynamic(() => import('./ClientNavbar'));
+const Github = dynamic(() => import('./Github'));
 
 export default function Navbar() {
     return (
@@ -18,7 +19,8 @@ export default function Navbar() {
             </div>
 
             {/* Theme Switch */}
-            <div className="flex justify-end items-center flex-1">
+            <div className="flex justify-end items-center flex-1 space-x-4">
+                <Github />
                 <ThemeSwitch />
             </div>
         </nav >
