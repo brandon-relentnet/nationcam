@@ -1,6 +1,6 @@
-import CategoryClient from "./CategoryClient";
+import StateClient from "./StateClient";
 
-export default async function CategoryPage({ params }) {
+export default async function StatePage({ params }) {
     const { slug } = await params; // Await params to access slug
-    return <CategoryClient slug={slug} />;
+    return <StateClient slug={slug} />;
 }

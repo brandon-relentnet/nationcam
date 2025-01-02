@@ -9,7 +9,7 @@ const VideoPlayer = dynamic(() => import("@/components/videos/VideoPlayer"), {
     ssr: false,
 });
 
-export default function CategoryClient({ slug }) {
+export default function StateClient({ slug }) {
     const [videos, setVideos] = useState([]);
     const [stateName, setStateName] = useState("");
     const [sublocations, setSublocations] = useState([]);

@@ -1,18 +1,23 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import buttonRedirects from "@/lib/buttonRedirects";
 
 export default function LocationsHeroSection({ title, slug, alt }) {
+  const redirectUrl = buttonRedirects[slug] || `/locations/${slug}`;
   const defaultVideoPath = "/videos/nc_default_hero.mp4";
   const defaultLogoPath = "/logos/nc_default_hero.png";
+  const defaultButtonPath = "/buttons/nc_default_button.png";
 
   const [videoPath, setVideoPath] = useState(defaultVideoPath);
   const [logoPath, setLogoPath] = useState(defaultLogoPath);
+  const [buttonPath, setButtonPath] = useState(defaultButtonPath);
 
   useEffect(() => {
     const verifyFiles = async () => {
       if (slug) {
         const customVideoPath = `/videos/nc_${slug}_hero.mp4`;
         const customLogoPath = `/logos/nc_${slug}_hero.png`;
+        const customButtonPath = `/buttons/nc_${slug}_button.png`;
 
         // Check if custom video exists
         try {
@@ -32,6 +37,16 @@ export default function LocationsHeroSection({ title, slug, alt }) {
           }
         } catch (err) {
           console.error("Logo not found:", customLogoPath);
+        }
+
+        // Check if custom button exists
+        try {
+          const buttonResponse = await fetch(customButtonPath, { method: "HEAD" });
+          if (buttonResponse.ok) {
+            setButtonPath(customButtonPath);
+          }
+        } catch (err) {
+          console.error("Button not found:", customButtonPath);
         }
       }
     };
@@ -54,20 +69,45 @@ export default function LocationsHeroSection({ title, slug, alt }) {
         />
       </div>
 
-      {/* Text Content */}
-      <div className="absolute text-center z-10 text-text px-4">
-        {logoPath ? (
-          <Image
-            src={logoPath}
-            alt={alt || "Category Logo"}
-            width={260}
-            height={260}
-            priority
-            style={{ width: "auto", height: "auto" }}
-          />
-        ) : (
-          <h1 className="text-4xl font-bold">{title}</h1>
-        )}
+      <div className="flex flex-col items-center justify-center h-screen z-10">
+        {/* Text Content */}
+        <div className="text-center text-text px-4 mb-4">
+          {logoPath ? (
+            <Image
+              src={logoPath}
+              alt={alt || "Category Logo"}
+              width={260}
+              height={260}
+              priority
+              style={{ width: "auto", height: "auto" }}
+            />
+          ) : (
+            <h1 className="text-4xl font-bold">{title}</h1>
+          )}
+        </div>
+
+        {/* Button */}
+        <div>
+          <a
+            href={redirectUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-4"
+          >
+            {buttonPath ? (
+              <Image
+                src={buttonPath}
+                alt="Category Button"
+                width={200}
+                height={50}
+                priority
+                style={{ width: "auto", height: "auto" }}
+              />
+            ) : (
+              <span>Explore</span>
+            )}
+          </a>
+        </div>
       </div>
 
       {/* SVG at the Bottom */}
