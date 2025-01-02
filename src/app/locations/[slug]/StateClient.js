@@ -64,17 +64,16 @@ export default function StateClient({ slug }) {
             <div className="page-container">
                 {sublocations.map((sub) => (
                     <div key={sub.sublocation_id} className="mb-8">
-                        <h3 className="text-xl font-semibold mb-4">
-                            <Link href={`/locations/${slug}/${sub.slug}`} className="text-accent hover:underline">
+                        <h2 className="mb-4">
+                            <Link href={`/locations/${slug}/${sub.slug}`} className="hover:text-accent transition duration-300">
                                 {sub.name}
                             </Link>
-                        </h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                        </h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 section-container">
                             {videos
                                 .filter((video) => video.sublocation_id === sub.sublocation_id)
                                 .map((video) => (
                                     <div key={video.video_id}>
-                                        <h4>{video.title}</h4>
                                         <VideoPlayer
                                             options={{
                                                 controls: true,

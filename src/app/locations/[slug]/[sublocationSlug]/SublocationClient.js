@@ -60,11 +60,12 @@ export default function SublocationClient({ stateSlug, sublocationSlug }) {
         <>
             <LocationsHeroSection title={sublocationName} slug={sublocationSlug} alt={sublocationName} />
             <div className="page-container">
+                <h2 className="text-center">Here are some of our Local Cameras!</h2>
                 {videos.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 section-container">
                         {videos.map((video) => (
                             <div key={video.video_id}>
-                                <h4>{video.title}</h4>
+                                <h6>{video.title}</h6>
                                 <VideoPlayer
                                     options={{
                                         controls: true,

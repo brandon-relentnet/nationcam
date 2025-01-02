@@ -1,14 +1,10 @@
-import CategoriesList from "@/components/videos/CategoriesList";
-import UsersList from "@/components/videos/UsersList";
-import VideosList from "@/components/videos/VideosList";
-
 export default function Home() {
   return (
     <div className="page-container">
       <h1>Home</h1>
-      <CategoriesList />
-      <UsersList />
-      <VideosList />
+      <p>
+        Welcome to NationCam, a website dedicated to showing some of the best views in the country while giving you a taste for the local culture and life. Our network of cameras is slowly coming online so be sure to come back to see more.
+      </p>
     </div>
   );
 }
