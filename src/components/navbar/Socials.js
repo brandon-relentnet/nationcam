@@ -4,7 +4,7 @@ const Logo = dynamic(() => import("@/components/Logo"));
 
 export default function Socials() {
     return (
-        <div>
+        <div className="-mt-0.5">
             <Logo />
         </div>
     );

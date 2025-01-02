@@ -113,7 +113,7 @@ export default function LocationsHeroSection({ title, slug, alt }) {
       </div>
 
       {/* SVG at the Bottom */}
-      <div className="absolute bottom-0 left-0 w-full z-10">
+      <div className="absolute bottom-0 left-0 w-full z-10 pointer-events-none">
         <svg
           id="visual"
           viewBox="0 0 900 600"
