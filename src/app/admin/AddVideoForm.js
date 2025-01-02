@@ -165,7 +165,7 @@ export default function AddVideoForm({ states, sublocations }) {
                 {errorMessage && <p className="text-red">{errorMessage}</p>}
                 <button
                     type="submit"
-                    className="bg-surface1 text-subtext0 hover:text-base p-2 rounded hover:bg-accent transition duration-300"
+                    className="inline-block bg-accent text-base font-semibold px-6 py-3 rounded-lg hover:opacity-60 transition-opacity duration-300"
                 >
                     Add Video
                 </button>

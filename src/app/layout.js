@@ -1,3 +1,4 @@
+import Footer from "@/components/Footer";
 import "../css/globals.css";
 import Navbar from "@/components/navbar/Navbar";
 import { ThemeProvider } from 'next-themes';
@@ -16,6 +17,7 @@ export default function RootLayout({ children }) {
           <main>
             {children}
           </main>
+          <Footer />
         </ThemeProvider>
       </body>
     </html>

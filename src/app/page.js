@@ -1,3 +1,4 @@
+import ContactCTA from "@/components/ContactCTA";
 import FAQSection from "./FAQSection";
 import HomeHeroSection from "./HomeHeroSection";
 import RoadMap from "./RoadMap";
@@ -10,6 +11,7 @@ export default function Home() {
         <RoadMap />
         <FAQSection />
       </div>
+      <ContactCTA />
     </>
   );
 }

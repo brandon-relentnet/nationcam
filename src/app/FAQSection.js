@@ -17,15 +17,15 @@ export default function FAQSection() {
         },
         {
             question: "Who is paying for all this?",
-            answer: "We have partnered with local businesses and agencies to help fund the network while ensuring it stays accessible to everyone.",
+            answer: "FNIT, Inc. is sponsoring this project as a show of strength in the market. To prove that they have solutions for any place at any time.",
         },
         {
             question: "Can I be a part of the network of cameras?",
-            answer: "Absolutely! You can contribute by partnering with us or hosting a camera at your location.",
+            answer: "You sure can! Email FNIT at sales@fnit.us and let them know you want to join the NationCam Project and they will reach out with more details!",
         },
         {
             question: "Why are there ads on your site?",
-            answer: "Ads help us cover the costs of hosting and maintaining the network while keeping it free for users.",
+            answer: "We will be implementing some ads on the site in order to pay for site and server upkeep.",
         },
     ];
 
@@ -54,7 +54,7 @@ export default function FAQSection() {
                             >
                                 <h3
                                     className={`font-semibold ${openQuestion === index
-                                        ? "text-2xl text-base"
+                                        ? "!text-2xl text-base"
                                         : "text-lg text-text"
                                         }`}
                                 >
