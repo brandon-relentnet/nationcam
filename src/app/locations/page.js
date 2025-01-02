@@ -6,7 +6,6 @@ const LocationsClient = dynamic(() => import("./LocationsClient"));
 
 export default function LocationsPage() {
     return (
-
         <div className="page-container">
             <AdvertisementLayout>
                 <h1 className="mb-4">Locations</h1>
@@ -14,6 +13,5 @@ export default function LocationsPage() {
                 <LocationsClient />
             </AdvertisementLayout>
         </div>
-
     );
 }

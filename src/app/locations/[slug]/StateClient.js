@@ -111,7 +111,7 @@ export default function StateClient({ slug }) {
                                                 controls: true,
                                                 responsive: true,
                                                 fluid: true,
-                                                autoplay: true,
+                                                autoplay: false,
                                                 muted: true,
                                                 sources: [
                                                     {
