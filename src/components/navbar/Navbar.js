@@ -1,4 +1,5 @@
 import dynamic from "next/dynamic";
+import Settings from "./Settings";
 
 const Socials = dynamic(() => import('./Socials'));
 const ThemeSwitch = dynamic(() => import('./ThemeSwitch'));
@@ -21,6 +22,7 @@ export default function Navbar() {
             {/* Theme Switch */}
             <div className="flex justify-end items-center flex-1 space-x-4">
                 <Github />
+                <Settings />
                 <ThemeSwitch />
             </div>
         </nav >
