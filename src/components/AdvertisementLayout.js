@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 export default function AdvertisementLayout({ children, leftAd, rightAd }) {
     return (
         <div className="flex flex-col lg:flex-row mt-20">
@@ -5,7 +7,14 @@ export default function AdvertisementLayout({ children, leftAd, rightAd }) {
             <div className="lg:hidden w-full">
                 {leftAd || (
                     <div className="p-4">
-                        <img src="/ads/mobile-banner.webp" alt="Top Ad" className="w-full" />
+                        <Image
+                            src="/ads/mobile-banner.webp"
+                            alt="Top Ad"
+                            width={1200}
+                            height={300}
+                            className="w-full h-auto"
+                            priority
+                        />
                     </div>
                 )}
             </div>
@@ -14,7 +23,13 @@ export default function AdvertisementLayout({ children, leftAd, rightAd }) {
             <aside className="hidden lg:block sticky top-40 h-screen overflow-y-auto">
                 {leftAd || (
                     <div className="p-4">
-                        <img src="/ads/left-banner.webp" alt="Left Ad" className="w-full" />
+                        <Image
+                            src="/ads/left-banner.webp"
+                            alt="Left Ad"
+                            width={300}
+                            height={900}
+                            className="w-full h-auto"
+                        />
                     </div>
                 )}
             </aside>
@@ -26,7 +41,13 @@ export default function AdvertisementLayout({ children, leftAd, rightAd }) {
             <aside className="hidden lg:block sticky top-40 h-screen overflow-y-auto">
                 {rightAd || (
                     <div className="p-4">
-                        <img src="/ads/right-banner.webp" alt="Right Ad" className="w-full" />
+                        <Image
+                            src="/ads/right-banner.webp"
+                            alt="Right Ad"
+                            width={300}
+                            height={900}
+                            className="w-full h-auto"
+                        />
                     </div>
                 )}
             </aside>
@@ -35,7 +56,13 @@ export default function AdvertisementLayout({ children, leftAd, rightAd }) {
             <div className="lg:hidden w-full">
                 {rightAd || (
                     <div className="p-4">
-                        <img src="/ads/mobile-banner.webp" alt="Bottom Ad" className="w-full" />
+                        <Image
+                            src="/ads/mobile-banner.webp"
+                            alt="Bottom Ad"
+                            width={1200}
+                            height={300}
+                            className="w-full h-auto"
+                        />
                     </div>
                 )}
             </div>
