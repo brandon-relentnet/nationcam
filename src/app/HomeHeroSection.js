@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Logo from "@/components/Logo";
 import VideoPlayer from "@/components/videos/VideoPlayer";
 
@@ -26,9 +27,11 @@ export default function HomeHeroSection() {
                     </div>
                     <p>Welcome to NationCam, a website dedicated to showing some of the best views in the country while giving you a taste for the local culture and life.</p>
                     <p>Our network of cameras is slowly coming online so be sure to come back to see more.</p>
-                    <a href="/locations" className="inline-block bg-accent text-base font-semibold px-6 py-3 rounded-lg hover:opacity-60 transition-opacity duration-300">
-                        View All Locations
-                    </a>
+                    <Link href="/locations">
+                        <a className="inline-block bg-accent text-base font-semibold px-6 py-3 rounded-lg hover:opacity-60 transition-opacity duration-300">
+                            View All Locations
+                        </a>
+                    </Link>
                 </div>
 
                 {/* Right Side: Video Player */}
