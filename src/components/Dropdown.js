@@ -18,6 +18,13 @@ export default function Dropdown({
         setIsOpen(false);
     };
 
+    const handleBlur = () => {
+        if (onBlur) {
+            onBlur();
+        }
+        setIsOpen(false);
+    };
+
     // Close dropdown if clicked outside
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -39,6 +46,7 @@ export default function Dropdown({
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
+                onBlur={handleBlur}
                 className="w-full px-4 py-2 text-left bg-surface1 text-text shadow rounded flex justify-between items-center hover:bg-surface2"
             >
                 <span>{selectedValue || label}</span>
@@ -68,8 +76,8 @@ export default function Dropdown({
                         type="button"
                         onClick={() => handleSelect(option.value)}
                         className={`block w-full text-left px-4 py-2 cursor-pointer ${option.value === selectedValue
-                                ? "bg-accent text-surface0 font-semibold"
-                                : "text-subtext0 hover:bg-overlay0 hover:text-text"
+                            ? "bg-accent text-surface0 font-semibold"
+                            : "text-subtext0 hover:bg-overlay0 hover:text-text"
                             }`}
                     >
                         {option.label}
