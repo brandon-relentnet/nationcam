@@ -27,7 +27,7 @@ export default function LocationsHeroSection({ title, slug, alt }) {
           if (videoResponse.ok) {
             setVideoPath(customVideoPath);
           }
-        } catch (err) {
+        } catch {
           console.error("Video not found:", customVideoPath);
         }
 
@@ -37,7 +37,7 @@ export default function LocationsHeroSection({ title, slug, alt }) {
           if (logoResponse.ok) {
             setLogoPath(customLogoPath);
           }
-        } catch (err) {
+        } catch {
           console.error("Logo not found:", customLogoPath);
         }
 
@@ -47,7 +47,7 @@ export default function LocationsHeroSection({ title, slug, alt }) {
           if (buttonResponse.ok) {
             setButtonPath(customButtonPath);
           }
-        } catch (err) {
+        } catch {
           console.error("Button not found:", customButtonPath);
         }
       }
