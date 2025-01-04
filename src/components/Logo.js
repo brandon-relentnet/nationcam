@@ -25,7 +25,7 @@ const Logo = () => {
                 className={`rounded cursor-pointer ${theme === "dark" ? "bg-accent" : ""}`}
             >
                 <Image
-                    src="/logos/nc_default_hero.png"
+                    src="/logos/nc_default_logo.webp"
                     alt="Houz2Home Logo"
                     width={250}
                     height={223}

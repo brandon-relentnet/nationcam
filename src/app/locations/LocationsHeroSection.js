@@ -6,9 +6,9 @@ import buttonRedirects from "@/lib/buttonRedirects";
 
 export default function LocationsHeroSection({ title, slug, alt }) {
   const redirectUrl = buttonRedirects[slug] || `/locations/${slug}`;
-  const defaultVideoPath = "/videos/webm/nc_default_hero.webm";
-  const defaultLogoPath = "/logos/nc_default_hero.png";
-  const defaultButtonPath = "/buttons/nc_default_button.png";
+  const defaultVideoPath = "/videos/nc_default_hero.webm";
+  const defaultLogoPath = "/logos/nc_default_logo.webp";
+  const defaultButtonPath = "/buttons/nc_default_button.webp";
 
   const [videoPath, setVideoPath] = useState(defaultVideoPath);
   const [logoPath, setLogoPath] = useState(defaultLogoPath);
@@ -17,9 +17,9 @@ export default function LocationsHeroSection({ title, slug, alt }) {
   useEffect(() => {
     const verifyFiles = async () => {
       if (slug) {
-        const customVideoPath = `/videos/webm/nc_${slug}_hero.webm`;
-        const customLogoPath = `/logos/nc_${slug}_hero.png`;
-        const customButtonPath = `/buttons/nc_${slug}_button.png`;
+        const customVideoPath = `/videos/nc_${slug}_hero.webm`;
+        const customLogoPath = `/logos/nc_${slug}_logo.webp`;
+        const customButtonPath = `/buttons/nc_${slug}_button.webp`;
 
         // Check if custom video exists
         try {
