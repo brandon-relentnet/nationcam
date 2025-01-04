@@ -2,7 +2,7 @@ import db from '@/lib/db';
 
 export async function GET(req) {
     const url = new URL(req.url);
-    const sublocationId = url.searchParams.get("sublocation_id"); // Extract sublocation_id from query params
+    const sublocationId = url.searchParams.get("sublocation_id");
 
     try {
         let query = `
@@ -38,16 +38,14 @@ export async function POST(req) {
         const data = await req.json();
         const { title, src, type, state_id, sublocation_id, status } = data;
 
-        // Validate required fields
         if (!title || !src || !type || !status) {
             return new Response(
                 JSON.stringify({ success: false, message: "Missing required fields." }),
-                { status: 400, headers: { "Content-Type": "application/json" } }
+                { status: 400, headers: { 'Content-Type': 'application/json' } }
             );
         }
 
-        // Insert into the database
-        const [result] = await db.query(
+        await db.query(
             `
             INSERT INTO videos (title, src, type, state_id, sublocation_id, status, created_at, updated_at) 
             VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
@@ -57,13 +55,13 @@ export async function POST(req) {
 
         return new Response(
             JSON.stringify({ success: true, message: "Video added successfully." }),
-            { status: 201, headers: { "Content-Type": "application/json" } }
+            { status: 201, headers: { 'Content-Type': 'application/json' } }
         );
     } catch (error) {
         console.error("Error adding video:", error);
         return new Response(
             JSON.stringify({ success: false, message: "Failed to add video." }),
-            { status: 500, headers: { "Content-Type": "application/json" } }
+            { status: 500, headers: { 'Content-Type': 'application/json' } }
         );
     }
 }

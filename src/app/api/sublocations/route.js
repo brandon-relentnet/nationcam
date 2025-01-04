@@ -9,7 +9,6 @@ function generateSlug(name) {
 
 export async function GET() {
     try {
-        // Fetch sublocations with video count and their parent state name
         const [sublocations] = await db.query(`
             SELECT 
                 sub.*, 
@@ -19,7 +18,6 @@ export async function GET() {
             JOIN states st ON sub.state_id = st.state_id
         `);
 
-        // Add slugs dynamically
         const sublocationsWithSlugs = sublocations.map((sublocation) => ({
             ...sublocation,
             slug: generateSlug(sublocation.name),
@@ -27,9 +25,7 @@ export async function GET() {
 
         return new Response(
             JSON.stringify({ success: true, data: sublocationsWithSlugs }),
-            {
-                headers: { 'Content-Type': 'application/json' },
-            }
+            { headers: { 'Content-Type': 'application/json' } }
         );
     } catch (error) {
         console.error('Error fetching sublocations:', error);
@@ -45,7 +41,6 @@ export async function POST(req) {
         const data = await req.json();
         const { name, description, state_id } = data;
 
-        // Validate required fields
         if (!name || !state_id) {
             return new Response(
                 JSON.stringify({ success: false, message: "Missing required fields." }),
@@ -53,11 +48,9 @@ export async function POST(req) {
             );
         }
 
-        // Generate slug
         const slug = generateSlug(name);
 
-        // Insert sublocation into the database
-        const [result] = await db.query(
+        await db.query(
             `INSERT INTO sublocations (name, description, state_id, slug, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())`,
             [name, description || null, state_id, slug]
         );

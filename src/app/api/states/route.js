@@ -40,7 +40,6 @@ export async function POST(req) {
         const data = await req.json();
         const { name, description } = data;
 
-        // Validate required fields
         if (!name) {
             return new Response(
                 JSON.stringify({ success: false, message: "State name is required." }),
@@ -48,8 +47,7 @@ export async function POST(req) {
             );
         }
 
-        // Insert state into the database
-        const [result] = await db.query(
+        await db.query(
             `INSERT INTO states (name, description, created_at, updated_at) VALUES (?, ?, NOW(), NOW())`,
             [name, description || null]
         );
