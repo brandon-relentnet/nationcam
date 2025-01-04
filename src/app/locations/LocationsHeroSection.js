@@ -6,7 +6,7 @@ import buttonRedirects from "@/lib/buttonRedirects";
 
 export default function LocationsHeroSection({ title, slug, alt }) {
   const redirectUrl = buttonRedirects[slug] || `/locations/${slug}`;
-  const defaultVideoPath = "/videos/nc_default_hero.mp4";
+  const defaultVideoPath = "/videos/webm/nc_default_hero.webm";
   const defaultLogoPath = "/logos/nc_default_hero.png";
   const defaultButtonPath = "/buttons/nc_default_button.png";
 
@@ -17,7 +17,7 @@ export default function LocationsHeroSection({ title, slug, alt }) {
   useEffect(() => {
     const verifyFiles = async () => {
       if (slug) {
-        const customVideoPath = `/videos/nc_${slug}_hero.mp4`;
+        const customVideoPath = `/videos/webm/nc_${slug}_hero.webm`;
         const customLogoPath = `/logos/nc_${slug}_hero.png`;
         const customButtonPath = `/buttons/nc_${slug}_button.png`;
 

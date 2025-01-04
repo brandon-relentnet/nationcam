@@ -7,7 +7,7 @@ export default function HomeHeroSection() {
             {/* Background Video */}
             <div className="bg-base opacity-70 w-full h-full absolute z-0">
                 <video
-                    src="/videos/nc_default_hero.mp4"
+                    src="/videos/webm/nc_default_hero.webm"
                     autoPlay
                     loop
                     muted
