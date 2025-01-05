@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Dropdown from "@/components/Dropdown";
+import Button from "@/components/Button";
 
 const VIDEO_TYPES = [
     { label: "MP4", value: "video/mp4" },
@@ -163,12 +164,11 @@ export default function AddVideoForm({ states, sublocations }) {
                 </div>
                 {successMessage && <p className="text-green">{successMessage}</p>}
                 {errorMessage && <p className="text-red">{errorMessage}</p>}
-                <button
+                <Button
+                    label="Add Video"
+                    value="addVideo"
                     type="submit"
-                    className="inline-block bg-accent text-base font-semibold px-6 py-3 rounded-lg hover:opacity-60 transition-opacity duration-300"
-                >
-                    Add Video
-                </button>
+                />
             </form>
         </div>
     );

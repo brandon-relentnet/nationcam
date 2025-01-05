@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Dropdown from "@/components/Dropdown";
+import Button from "@/components/Button";
 
 export default function AddSublocationForm() {
     const [formData, setFormData] = useState({
@@ -106,12 +107,11 @@ export default function AddSublocationForm() {
                 </div>
                 {successMessage && <p className="text-green">{successMessage}</p>}
                 {errorMessage && <p className="text-red">{errorMessage}</p>}
-                <button
+                <Button
                     type="submit"
-                    className="inline-block bg-accent text-base font-semibold px-6 py-3 rounded-lg hover:opacity-60 transition-opacity duration-300"
-                >
-                    Add Sublocation
-                </button>
+                    label="Add Sublocation"
+                    value="addSublocation"
+                />
             </form>
         </div>
     );

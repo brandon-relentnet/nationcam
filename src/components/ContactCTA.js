@@ -1,3 +1,5 @@
+import InternalButton from './InternalButton';
+
 const ContactCTA = () => {
     return (
         <section className="py-12 px-4 md:px-8 lg:px-16mb-12 lg:mb-28 text-center">
@@ -6,12 +8,11 @@ const ContactCTA = () => {
                 <p className="mb-8">
                     Contact us to see how you can help our camera network grow.
                 </p>
-                <a
+                <InternalButton
                     href="/contact"
-                    className="inline-block bg-accent text-base font-semibold px-6 py-3 rounded-lg hover:opacity-60 transition-opacity duration-300"
-                >
-                    Contact Us
-                </a>
+                    label="Contact Us"
+                    value="contactCTA"
+                />
             </div>
         </section>
     );

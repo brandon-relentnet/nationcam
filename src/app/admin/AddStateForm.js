@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Button from "@/components/Button";
 
 export default function AddStateForm() {
     const [formData, setFormData] = useState({
@@ -70,12 +71,11 @@ export default function AddStateForm() {
                 </div>
                 {successMessage && <p className="text-green">{successMessage}</p>}
                 {errorMessage && <p className="text-red">{errorMessage}</p>}
-                <button
+                <Button
                     type="submit"
-                    className="inline-block bg-accent text-base font-semibold px-6 py-3 rounded-lg hover:opacity-60 transition-opacity duration-300"
-                >
-                    Add State
-                </button>
+                    label="Add State"
+                    value="addState"
+                />
             </form>
         </div>
     );
