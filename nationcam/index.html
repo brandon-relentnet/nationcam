@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NationCam</title>
+    <meta name="description" content="View cameras from around the USA" />
+    <link rel="icon" href="/favicon.ico" />
+    <script>
+      // Prevent theme flash — apply saved theme before first paint
+      ;(function () {
+        try {
+          var theme = localStorage.getItem('theme') || 'dark'
+          document.documentElement.classList.toggle('dark', theme === 'dark')
+        } catch (e) {}
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nationcam}
+      POSTGRES_USER: ${POSTGRES_USER:-nationcam}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nationcam}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgrest:
+    image: postgrest/postgrest:v12.2.0
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://${POSTGRES_USER:-nationcam}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-nationcam}
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: web_anon
+      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET:?Set PGRST_JWT_SECRET (min 32 chars)}
+      PGRST_DB_MAX_ROWS: "1000"
+
+  app:
+    build:
+      context: ./nationcam
+      args:
+        VITE_PAGE_PASSWORD: ${VITE_PAGE_PASSWORD:-}
+        VITE_ADMIN_JWT: ${VITE_ADMIN_JWT:-}
+    restart: unless-stopped
+    depends_on:
+      - postgrest
+    ports:
+      - "${APP_PORT:-3000}:80"
+
+volumes:
+  pgdata:

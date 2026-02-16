@@ -1,0 +1,160 @@
+@import 'tailwindcss';
+
+/* === Catppuccin Latte (Light Theme) === */
+:root {
+  --color-accent: var(--color-green);
+  --color-rosewater: #dc8a78;
+  --color-flamingo: #dd7878;
+  --color-pink: #ea76cb;
+  --color-mauve: #8839ef;
+  --color-red: #d20f39;
+  --color-maroon: #e64553;
+  --color-peach: #fe640b;
+  --color-yellow: #df8e1d;
+  --color-green: #40a02b;
+  --color-teal: #179299;
+  --color-sky: #04a5e5;
+  --color-sapphire: #209fb5;
+  --color-blue: #1e66f5;
+  --color-lavender: #7287fd;
+  --color-text: #4c4f69;
+  --color-subtext1: #5c5f77;
+  --color-subtext0: #6c6f85;
+  --color-overlay2: #7c7f93;
+  --color-overlay1: #8c8fa1;
+  --color-overlay0: #9ca0b0;
+  --color-surface2: #acb0be;
+  --color-surface1: #bcc0cc;
+  --color-surface0: #ccd0da;
+  --color-base: #eff1f5;
+  --color-mantle: #e6e9ef;
+  --color-crust: #dce0e8;
+}
+
+/* === Catppuccin Mocha (Dark Theme) === */
+html.dark {
+  --color-rosewater: #f5e0dc;
+  --color-flamingo: #f2cdcd;
+  --color-pink: #f5c2e7;
+  --color-mauve: #cba6f7;
+  --color-red: #f38ba8;
+  --color-maroon: #eba0ac;
+  --color-peach: #fab387;
+  --color-yellow: #f9e2af;
+  --color-green: #a6e3a1;
+  --color-teal: #94e2d5;
+  --color-sky: #89dceb;
+  --color-sapphire: #74c7ec;
+  --color-blue: #89b4fa;
+  --color-lavender: #b4befe;
+  --color-text: #cdd6f4;
+  --color-subtext1: #bac2de;
+  --color-subtext0: #a6adc8;
+  --color-overlay2: #9399b2;
+  --color-overlay1: #7f849c;
+  --color-overlay0: #6c7086;
+  --color-surface2: #585b70;
+  --color-surface1: #45475a;
+  --color-surface0: #313244;
+  --color-base: #1e1e2e;
+  --color-mantle: #181825;
+  --color-crust: #11111b;
+}
+
+/* === Tailwind v4 theme registration === */
+@theme {
+  --color-accent: var(--color-accent);
+  --color-rosewater: var(--color-rosewater);
+  --color-flamingo: var(--color-flamingo);
+  --color-pink: var(--color-pink);
+  --color-mauve: var(--color-mauve);
+  --color-red: var(--color-red);
+  --color-maroon: var(--color-maroon);
+  --color-peach: var(--color-peach);
+  --color-yellow: var(--color-yellow);
+  --color-green: var(--color-green);
+  --color-teal: var(--color-teal);
+  --color-sky: var(--color-sky);
+  --color-sapphire: var(--color-sapphire);
+  --color-blue: var(--color-blue);
+  --color-lavender: var(--color-lavender);
+  --color-text: var(--color-text);
+  --color-subtext1: var(--color-subtext1);
+  --color-subtext0: var(--color-subtext0);
+  --color-overlay2: var(--color-overlay2);
+  --color-overlay1: var(--color-overlay1);
+  --color-overlay0: var(--color-overlay0);
+  --color-surface2: var(--color-surface2);
+  --color-surface1: var(--color-surface1);
+  --color-surface0: var(--color-surface0);
+  --color-base: var(--color-base);
+  --color-mantle: var(--color-mantle);
+  --color-crust: var(--color-crust);
+}
+
+/* === Base styles === */
+body {
+  margin: 0;
+  background-color: var(--color-base);
+  color: var(--color-text);
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
+    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* === Video.js control bar theming === */
+.vjs-control-bar {
+  background-color: var(--color-crust) !important;
+  opacity: 0.7 !important;
+}
+
+.video-js .vjs-play-control,
+.video-js .vjs-volume-panel,
+.video-js .vjs-fullscreen-control,
+.video-js .vjs-live-display {
+  color: var(--color-text);
+}
+
+.video-js .vjs-control:hover {
+  color: var(--color-accent);
+}
+
+/* === Utility classes === */
+.page-container {
+  @apply mx-auto my-28 w-11/12 text-left lg:w-10/12;
+}
+
+.section-container {
+  @apply rounded-lg bg-surface0 p-6 shadow-lg;
+}
+
+/* === Global typography === */
+h1 {
+  @apply mb-2 font-serif text-5xl font-extrabold leading-tight text-text sm:text-6xl md:text-7xl;
+}
+
+h2 {
+  @apply mb-2 font-serif text-3xl font-bold leading-snug text-text sm:text-4xl md:text-5xl;
+}
+
+h3 {
+  @apply mb-2 font-serif text-2xl font-semibold leading-normal text-text sm:text-3xl md:text-4xl;
+}
+
+h4 {
+  @apply mb-2 font-serif text-xl font-semibold leading-relaxed text-text sm:text-2xl md:text-3xl;
+}
+
+h5 {
+  @apply mb-2 font-serif text-lg font-semibold leading-relaxed text-text sm:text-xl md:text-2xl;
+}
+
+h6 {
+  @apply mb-2 font-serif text-base font-medium leading-relaxed text-text sm:text-lg md:text-xl;
+}
+
+p {
+  @apply mb-8 font-sans text-base leading-relaxed text-subtext1 md:text-lg;
+}
