@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import { Film, MapPin, Plus, Settings } from 'lucide-react'
 import type { State, Sublocation } from '@/lib/types'
 import PasswordProtection from '@/components/PasswordProtection'
 import Dropdown from '@/components/Dropdown'
@@ -42,11 +43,25 @@ function AdminDashboard() {
   }, [])
 
   return (
-    <div className="page-container space-y-12">
-      <h1>Admin Dashboard</h1>
+    <div className="page-container space-y-10">
+      <div>
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-4 py-1.5">
+          <Settings size={14} className="text-accent" />
+          <span className="font-mono text-xs font-medium text-accent">
+            Administration
+          </span>
+        </div>
+        <h1>Admin Dashboard</h1>
+        <p className="max-w-lg">
+          Manage cameras, states, and sublocations from this panel.
+        </p>
+      </div>
 
       <section>
-        <h2>Add Video</h2>
+        <div className="mb-4 flex items-center gap-2">
+          <Film size={18} className="text-accent" />
+          <h3 className="mb-0">Add Video</h3>
+        </div>
         <AddVideoForm
           states={states}
           sublocations={sublocations}
@@ -55,12 +70,18 @@ function AdminDashboard() {
       </section>
 
       <section>
-        <h2>Add State</h2>
+        <div className="mb-4 flex items-center gap-2">
+          <MapPin size={18} className="text-accent" />
+          <h3 className="mb-0">Add State</h3>
+        </div>
         <AddStateForm onSuccess={fetchData} />
       </section>
 
       <section>
-        <h2>Add Sublocation</h2>
+        <div className="mb-4 flex items-center gap-2">
+          <Plus size={18} className="text-accent" />
+          <h3 className="mb-0">Add Sublocation</h3>
+        </div>
         <AddSublocationForm states={states} onSuccess={fetchData} />
       </section>
     </div>
@@ -168,7 +189,9 @@ function AddVideoForm({
         onSelect={(v) => setStatus(String(v))}
       />
 
-      {message && <p className="mb-0 text-sm text-accent">{message}</p>}
+      {message && (
+        <p className="mb-0 text-sm font-medium text-accent">{message}</p>
+      )}
       <Button text="Add Video" type="submit" />
     </form>
   )
@@ -202,7 +225,9 @@ function AddStateForm({ onSuccess }: { onSuccess: () => void }) {
         value={description}
         onChange={setDescription}
       />
-      {message && <p className="mb-0 text-sm text-accent">{message}</p>}
+      {message && (
+        <p className="mb-0 text-sm font-medium text-accent">{message}</p>
+      )}
       <Button text="Add State" type="submit" />
     </form>
   )
@@ -257,7 +282,9 @@ function AddSublocationForm({
         selectedValue={stateId}
         onSelect={(v) => setStateId(Number(v))}
       />
-      {message && <p className="mb-0 text-sm text-accent">{message}</p>}
+      {message && (
+        <p className="mb-0 text-sm font-medium text-accent">{message}</p>
+      )}
       <Button text="Add Sublocation" type="submit" />
     </form>
   )
@@ -276,14 +303,14 @@ function AdminInput({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-subtext0">
+      <label className="mb-1.5 block font-sans text-sm font-medium text-subtext1">
         {label}
       </label>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-overlay0 bg-base px-4 py-3 text-text transition-colors focus:border-accent focus:outline-none"
+        className="w-full rounded-lg border border-overlay0 bg-base px-4 py-3 font-sans text-sm text-text transition-all duration-200 placeholder:text-overlay1 focus:border-accent focus:ring-2 focus:ring-accent-glow focus:outline-none"
       />
     </div>
   )

@@ -33,13 +33,13 @@ export default function LocationsHeroSection({
       if (hasLogo) setLogoSrc(customLogo)
       if (hasButton) setButtonSrc(customButton)
     }
-    checkAssets()
+    void checkAssets()
   }, [slug])
 
   const redirectUrl = buttonRedirects[slug]
 
   return (
-    <section className="relative overflow-hidden py-20">
+    <section className="relative overflow-hidden">
       {/* Background video */}
       <video
         autoPlay
@@ -51,17 +51,27 @@ export default function LocationsHeroSection({
         <source src={videoSrc} type="video/webm" />
       </video>
 
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-crust/70" />
+      {/* Cinematic gradient overlays */}
+      <div className="absolute inset-0 bg-gradient-to-b from-crust/80 via-crust/40 to-crust/90" />
+      <div className="absolute inset-0 bg-gradient-to-r from-crust/40 to-transparent" />
 
       {/* Content */}
-      <div className="relative z-10 mx-auto flex max-w-5xl flex-col items-center gap-6 px-6 text-center">
+      <div className="relative z-10 flex min-h-[50vh] flex-col items-center justify-center gap-5 px-6 py-24 text-center">
         <img
           src={logoSrc}
           alt={alt ?? `${title} Logo`}
-          className="h-24 w-24 rounded-full object-cover"
+          className="h-20 w-20 rounded-full object-cover shadow-xl ring-2 ring-white/10"
+          style={{ animation: 'scale-in 500ms var(--spring-smooth) forwards' }}
         />
-        <h1 className="text-white">{title}</h1>
+        <h1
+          className="text-white"
+          style={{
+            animation: 'fade-in-up 600ms var(--spring-smooth) 100ms forwards',
+            opacity: 0,
+          }}
+        >
+          {title}
+        </h1>
 
         {buttonSrc && redirectUrl && (
           <a
@@ -70,29 +80,22 @@ export default function LocationsHeroSection({
             rel={
               redirectUrl.startsWith('http') ? 'noopener noreferrer' : undefined
             }
+            style={{
+              animation: 'fade-in-up 600ms var(--spring-smooth) 250ms forwards',
+              opacity: 0,
+            }}
           >
             <img
               src={buttonSrc}
               alt={`${title} sponsor`}
-              className="h-12 rounded-lg"
+              className="h-12 rounded-lg transition-transform duration-350 ease-[var(--spring-snappy)] hover:scale-105"
             />
           </a>
         )}
       </div>
 
-      {/* Decorative waves */}
-      <div className="absolute right-0 bottom-0 left-0">
-        <svg
-          viewBox="0 0 1440 120"
-          preserveAspectRatio="none"
-          className="w-full"
-        >
-          <path
-            d="M0,64 C480,150 960,-20 1440,64 L1440,120 L0,120 Z"
-            className="fill-base"
-          />
-        </svg>
-      </div>
+      {/* Bottom gradient fade into page */}
+      <div className="absolute right-0 bottom-0 left-0 h-24 bg-gradient-to-t from-base to-transparent" />
     </section>
   )
 }

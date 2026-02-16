@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 
 interface DropdownOption {
   value: string | number
@@ -7,29 +7,28 @@ interface DropdownOption {
 }
 
 interface DropdownProps {
-  options: Array<DropdownOption>
-  onSelect: (value: string | number) => void
   label: string
-  selectedValue?: string | number
+  options: Array<DropdownOption>
+  selectedValue: string | number
+  onSelect: (val: string | number) => void
 }
 
 export default function Dropdown({
-  options,
-  onSelect,
   label,
+  options,
   selectedValue,
+  onSelect,
 }: DropdownProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   const selectedLabel =
-    options.find((o) => String(o.value) === String(selectedValue))?.label ??
-    label
+    options.find((o) => o.value === selectedValue)?.label ?? ''
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
-        setIsOpen(false)
+        setOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -37,37 +36,53 @@ export default function Dropdown({
   }, [])
 
   return (
-    <div ref={ref} className="relative w-full">
+    <div ref={ref} className="relative">
+      <label className="mb-1.5 block font-mono text-xs font-medium tracking-wider text-subtext0 uppercase">
+        {label}
+      </label>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between rounded-lg border border-overlay0 bg-surface0 px-4 py-3 text-left text-text transition-colors hover:border-accent"
+        onClick={() => setOpen(!open)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        className="flex w-full items-center justify-between rounded-lg border border-overlay0 bg-surface0 px-4 py-2.5 text-sm text-text transition-all duration-200 hover:border-accent focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
       >
-        <span>{selectedLabel}</span>
+        <span className={selectedLabel ? 'text-text' : 'text-subtext0'}>
+          {selectedLabel || `Select ${label.toLowerCase()}`}
+        </span>
         <ChevronDown
-          size={18}
-          className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          size={16}
+          className={`text-subtext0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
-      {isOpen && (
-        <ul className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-overlay0 bg-surface0 shadow-lg">
-          {options.map((option) => (
-            <li key={option.value}>
+      <div
+        className={`absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-overlay0 bg-surface0 shadow-xl transition-all duration-350 ease-[var(--spring-smooth)] ${
+          open
+            ? 'pointer-events-auto max-h-60 opacity-100'
+            : 'pointer-events-none max-h-0 border-transparent opacity-0'
+        }`}
+      >
+        <ul className="max-h-56 overflow-y-auto py-1">
+          {options.map((opt) => (
+            <li key={String(opt.value)}>
               <button
                 type="button"
-                className="w-full px-4 py-2 text-left text-text transition-colors hover:bg-surface1"
                 onClick={() => {
-                  onSelect(option.value)
-                  setIsOpen(false)
+                  onSelect(opt.value)
+                  setOpen(false)
                 }}
+                className={`w-full px-4 py-2 text-left text-sm transition-colors ${
+                  opt.value === selectedValue
+                    ? 'bg-accent/10 text-accent'
+                    : 'text-text hover:bg-surface1'
+                }`}
               >
-                {option.label}
+                {opt.label}
               </button>
             </li>
           ))}
         </ul>
-      )}
+      </div>
     </div>
   )
 }

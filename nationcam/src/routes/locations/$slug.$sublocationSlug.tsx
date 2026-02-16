@@ -1,10 +1,12 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import type { Sublocation, Video } from '@/lib/types'
+import { Video } from 'lucide-react'
+import type { Sublocation, Video as VideoType } from '@/lib/types'
 import { fetchSublocations, fetchVideosBySublocation } from '@/lib/api'
 import LocationsHeroSection from '@/components/LocationsHeroSection'
 import AdvertisementLayout from '@/components/AdvertisementLayout'
-import VideoPlayer from '@/components/videos/VideoPlayer'
+import StreamPlayer from '@/components/StreamPlayer'
+import Reveal from '@/components/Reveal'
 
 export const Route = createFileRoute('/locations/$slug/$sublocationSlug')({
   component: SublocationPage,
@@ -13,7 +15,7 @@ export const Route = createFileRoute('/locations/$slug/$sublocationSlug')({
 function SublocationPage() {
   const { slug, sublocationSlug } = Route.useParams()
   const [sublocation, setSublocation] = useState<Sublocation | null>(null)
-  const [videos, setVideos] = useState<Array<Video>>([])
+  const [videos, setVideos] = useState<Array<VideoType>>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -37,16 +39,27 @@ function SublocationPage() {
   if (loading) {
     return (
       <div className="page-container">
-        <p>Loading...</p>
+        <div className="flex flex-col items-center justify-center py-20">
+          <div
+            className="h-8 w-8 rounded-full border-2 border-accent border-t-transparent"
+            style={{ animation: 'spin 800ms linear infinite' }}
+          />
+          <p className="mt-4 font-mono text-sm text-subtext0">Loading...</p>
+        </div>
       </div>
     )
   }
 
   if (!sublocation) {
     return (
-      <div className="page-container">
+      <div className="page-container text-center">
         <h2>Location not found</h2>
-        <Link to="/locations/$slug" params={{ slug }}>
+        <p>The location you are looking for does not exist.</p>
+        <Link
+          to="/locations/$slug"
+          params={{ slug }}
+          className="inline-flex items-center gap-2 rounded-lg bg-accent px-6 py-2.5 font-sans font-semibold text-crust transition-all duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:bg-accent-hover active:scale-[0.98]"
+        >
           Back to state
         </Link>
       </div>
@@ -60,24 +73,32 @@ function SublocationPage() {
       <div className="page-container">
         <AdvertisementLayout>
           {videos.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {videos.map((video) => (
-                <div key={video.video_id} className="section-container">
-                  <VideoPlayer
-                    options={{
-                      autoplay: false,
-                      controls: true,
-                      responsive: true,
-                      fluid: true,
-                      sources: [{ src: video.src, type: video.type }],
-                    }}
-                  />
-                  <h5 className="mt-3 mb-0">{video.title}</h5>
-                </div>
-              ))}
-            </div>
+            <Reveal stagger>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {videos.map((video) => (
+                  <div
+                    key={video.video_id}
+                    className="reveal group overflow-hidden rounded-xl border border-overlay0 bg-surface0 shadow-lg transition-all duration-350 ease-[var(--spring-snappy)] hover:border-accent/30 hover:shadow-xl"
+                  >
+                    <StreamPlayer
+                      src={video.src}
+                      type={video.type}
+                      muted
+                      controls
+                      fluid
+                    />
+                    <div className="px-4 py-3">
+                      <h5 className="mb-0 truncate transition-colors group-hover:text-accent">
+                        {video.title}
+                      </h5>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Reveal>
           ) : (
-            <div className="section-container text-center">
+            <div className="section-container py-12 text-center">
+              <Video size={32} className="mx-auto mb-4 text-overlay1" />
               <p className="mb-0">
                 No cameras available for {sublocation.name} yet. Check back
                 soon!

@@ -1,52 +1,47 @@
 interface AdvertisementLayoutProps {
   children: React.ReactNode
-  leftAd?: string
-  rightAd?: string
 }
 
 export default function AdvertisementLayout({
   children,
-  leftAd = '/ads/left-banner.webp',
-  rightAd = '/ads/right-banner.webp',
 }: AdvertisementLayoutProps) {
   return (
-    <>
-      {/* Mobile top banner */}
-      <div className="flex justify-center py-2 lg:hidden">
-        <img
-          src="/ads/mobile-banner.webp"
-          alt="Advertisement"
-          className="h-auto max-w-full"
-        />
+    <div className="relative flex justify-center gap-6">
+      {/* Left sidebar ad — desktop only */}
+      <aside className="sticky top-20 hidden h-fit w-36 shrink-0 xl:block">
+        <div className="overflow-hidden rounded-lg border border-overlay0/30 opacity-60 transition-opacity hover:opacity-100">
+          <img
+            src="/ads/left-banner.webp"
+            alt="Advertisement"
+            className="w-full"
+          />
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <div className="min-w-0 flex-1">{children}</div>
+
+      {/* Right sidebar ad — desktop only */}
+      <aside className="sticky top-20 hidden h-fit w-36 shrink-0 xl:block">
+        <div className="overflow-hidden rounded-lg border border-overlay0/30 opacity-60 transition-opacity hover:opacity-100">
+          <img
+            src="/ads/right-banner.webp"
+            alt="Advertisement"
+            className="w-full"
+          />
+        </div>
+      </aside>
+
+      {/* Mobile banners */}
+      <div className="fixed right-0 bottom-0 left-0 z-30 xl:hidden">
+        <div className="mx-auto max-w-md border-t border-overlay0/30 bg-mantle/90 p-2 backdrop-blur-sm">
+          <img
+            src="/ads/mobile-banner.webp"
+            alt="Advertisement"
+            className="mx-auto h-12 object-contain"
+          />
+        </div>
       </div>
-
-      <div className="flex gap-4">
-        {/* Desktop left sidebar */}
-        <aside className="hidden w-40 flex-shrink-0 lg:block">
-          <div className="sticky top-28">
-            <img src={leftAd} alt="Advertisement" className="w-full" />
-          </div>
-        </aside>
-
-        {/* Main content */}
-        <main className="min-w-0 flex-1">{children}</main>
-
-        {/* Desktop right sidebar */}
-        <aside className="hidden w-40 flex-shrink-0 lg:block">
-          <div className="sticky top-28">
-            <img src={rightAd} alt="Advertisement" className="w-full" />
-          </div>
-        </aside>
-      </div>
-
-      {/* Mobile bottom banner */}
-      <div className="flex justify-center py-2 lg:hidden">
-        <img
-          src="/ads/mobile-banner.webp"
-          alt="Advertisement"
-          className="h-auto max-w-full"
-        />
-      </div>
-    </>
+    </div>
   )
 }

@@ -1,7 +1,16 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import { ChevronDown, Plus } from 'lucide-react'
-import VideoPlayer from '@/components/videos/VideoPlayer'
+import {
+  Camera,
+  ChevronDown,
+  Globe,
+  Map,
+  MonitorPlay,
+  Radio,
+} from 'lucide-react'
+import StreamPlayer from '@/components/StreamPlayer'
+import ContactCTA from '@/components/ContactCTA'
+import Reveal from '@/components/Reveal'
 
 export const Route = createFileRoute('/')({ component: HomePage })
 
@@ -9,7 +18,8 @@ function HomePage() {
   return (
     <div>
       <HomeHeroSection />
-      <RoadMap />
+      <FeaturedStream />
+      <StatsSection />
       <FAQSection />
       <ContactCTA />
     </div>
@@ -32,99 +42,170 @@ function HomeHeroSection() {
         <source src="/videos/nc_default_hero.webm" type="video/webm" />
       </video>
 
-      <div className="absolute inset-0 bg-crust/60" />
+      {/* Dual gradient overlays */}
+      <div className="absolute inset-0 bg-crust/70" />
+      <div className="absolute inset-0 bg-gradient-to-t from-base via-transparent to-transparent" />
 
-      <div className="relative z-10 flex min-h-[80vh] flex-col items-center justify-center gap-8 px-6 lg:flex-row lg:items-center lg:justify-between">
-        {/* Left: text */}
-        <div className="max-w-xl text-center lg:text-left">
-          <img
-            src="/logos/nc_default_logo.webp"
-            alt="NationCam Logo"
-            className="mx-auto mb-6 h-20 w-20 rounded-full object-cover lg:mx-0"
-          />
-          <h1 className="text-white">NationCam</h1>
-          <p className="text-gray-300">
-            View live cameras from around the United States. Explore cities,
-            landmarks, and communities through real-time video feeds.
-          </p>
+      <div className="relative z-10 flex min-h-[85vh] flex-col items-center justify-center px-6 text-center">
+        {/* Pill badge */}
+        <div
+          className="mb-8 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-4 py-1.5"
+          style={{ animation: 'fade-in 800ms ease forwards' }}
+        >
+          <Radio size={14} className="text-accent" />
+          <span className="font-mono text-xs font-medium text-accent">
+            Live cameras across America
+          </span>
+        </div>
+
+        <h1
+          className="mx-auto max-w-4xl text-white drop-shadow-2xl"
+          style={{
+            animation: 'fade-in-up 700ms var(--spring-smooth) forwards',
+          }}
+        >
+          See America{' '}
+          <span className="bg-gradient-to-r from-accent to-amber-300 bg-clip-text text-transparent">
+            in real time
+          </span>
+        </h1>
+
+        <p
+          className="mx-auto max-w-xl text-lg text-gray-300"
+          style={{
+            opacity: 0,
+            animation: 'fade-in-up 700ms var(--spring-smooth) 150ms forwards',
+          }}
+        >
+          Explore cities, landmarks, and communities through live camera feeds
+          from coast to coast.
+        </p>
+
+        <div
+          className="mt-4 flex flex-wrap items-center justify-center gap-4"
+          style={{
+            opacity: 0,
+            animation: 'fade-in-up 700ms var(--spring-smooth) 300ms forwards',
+          }}
+        >
           <Link
             to="/locations"
-            className="inline-block rounded-lg bg-accent px-8 py-3 font-semibold text-crust transition-colors hover:opacity-90"
+            className="inline-flex items-center gap-2 rounded-lg bg-accent px-8 py-3 font-sans font-semibold text-crust transition-all duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:bg-accent-hover hover:shadow-lg active:scale-[0.98]"
           >
-            View All Locations
+            <Map size={18} />
+            Explore Locations
+          </Link>
+          <Link
+            to="/contact"
+            className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-8 py-3 font-sans font-semibold text-white backdrop-blur-sm transition-all duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:border-white/40 hover:bg-white/10 active:scale-[0.98]"
+          >
+            Add Your Camera
           </Link>
         </div>
 
-        {/* Right: featured camera */}
-        <div className="w-full max-w-lg">
-          <VideoPlayer
-            options={{
-              autoplay: true,
-              controls: true,
-              responsive: true,
-              fluid: true,
-              muted: true,
-              sources: [
-                {
-                  src: 'https://streamer.nationcam.com/memfs/4cdb363f-2bfa-4a0a-b954-ac9b16200665.m3u8',
-                  type: 'application/x-mpegURL',
-                },
-              ],
-            }}
-          />
+        {/* Scroll indicator */}
+        <div
+          className="absolute bottom-8 flex flex-col items-center gap-2"
+          style={{
+            opacity: 0,
+            animation: 'fade-in 1s ease 1.2s forwards',
+          }}
+        >
+          <span className="font-mono text-[10px] tracking-widest text-white/40 uppercase">
+            Scroll
+          </span>
+          <ChevronDown size={16} className="animate-bounce text-white/30" />
         </div>
       </div>
 
-      {/* Decorative waves */}
-      <div className="absolute right-0 bottom-0 left-0">
-        <svg
-          viewBox="0 0 1440 120"
-          preserveAspectRatio="none"
-          className="w-full"
-        >
-          <path
-            d="M0,64 C480,150 960,-20 1440,64 L1440,120 L0,120 Z"
-            className="fill-mantle"
-          />
-        </svg>
-        <svg
-          viewBox="0 0 1440 40"
-          preserveAspectRatio="none"
-          className="-mt-px w-full"
-        >
-          <rect width="1440" height="40" className="fill-base" />
-        </svg>
-      </div>
+      {/* Bottom gradient fade */}
+      <div className="absolute right-0 bottom-0 left-0 h-32 bg-gradient-to-t from-base to-transparent" />
     </section>
   )
 }
 
-/* ──────────────────── RoadMap ──────────────────── */
+/* ──────────────────── Featured Stream ──────────────────── */
 
-function RoadMap() {
+function FeaturedStream() {
+  return (
+    <section className="py-20">
+      <Reveal>
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="mb-8 text-center">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-4 py-1.5">
+              <MonitorPlay size={14} className="text-accent" />
+              <span className="font-mono text-xs font-medium text-accent">
+                Featured camera
+              </span>
+            </div>
+            <h2>Watch Now</h2>
+            <p className="mx-auto max-w-lg">
+              A live look from our network. Tune in to see what is happening
+              right now.
+            </p>
+          </div>
+
+          <div className="glow-accent overflow-hidden rounded-2xl">
+            <StreamPlayer
+              src="https://streamer.nationcam.com/memfs/4cdb363f-2bfa-4a0a-b954-ac9b16200665.m3u8"
+              autoplay
+              muted
+              live
+              fluid
+            />
+          </div>
+        </div>
+      </Reveal>
+    </section>
+  )
+}
+
+/* ──────────────────── Stats ──────────────────── */
+
+function StatsSection() {
   const stats = [
-    { value: '1,250', label: 'Cameras Planned' },
-    { value: '50', label: 'States' },
-    { value: '25', label: 'Starting in Louisiana' },
+    {
+      icon: Camera,
+      value: '1,250',
+      label: 'Cameras Planned',
+    },
+    {
+      icon: Globe,
+      value: '50',
+      label: 'States',
+    },
+    {
+      icon: Map,
+      value: '25',
+      label: 'Starting in Louisiana',
+    },
   ]
 
   return (
-    <section className="py-16">
-      <div className="mx-auto max-w-5xl px-6 text-center">
-        <h2>Our Planned Network</h2>
-        <p>
-          We are building a nationwide network of live cameras, starting with
-          Louisiana and expanding across all 50 states.
-        </p>
-        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
-          {stats.map((stat) => (
-            <div key={stat.label} className="section-container">
-              <div className="text-4xl font-bold text-accent">{stat.value}</div>
-              <div className="mt-2 text-subtext0">{stat.label}</div>
-            </div>
-          ))}
+    <section className="bg-surface0 py-20">
+      <Reveal stagger>
+        <div className="mx-auto max-w-5xl px-6 text-center">
+          <h2>Our Planned Network</h2>
+          <p className="mx-auto max-w-lg">
+            Building a nationwide network of live cameras, starting with
+            Louisiana and expanding across all 50 states.
+          </p>
+          <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
+            {stats.map((stat) => (
+              <div
+                key={stat.label}
+                className="reveal section-container flex flex-col items-center gap-3 py-8 transition-all duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:border-accent/30"
+              >
+                <stat.icon size={24} className="text-accent" />
+                <div className="font-mono text-4xl font-bold text-accent">
+                  {stat.value}
+                </div>
+                <div className="text-sm text-subtext0">{stat.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      </Reveal>
     </section>
   )
 }
@@ -158,60 +239,51 @@ function FAQSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   return (
-    <section className="bg-surface0 py-16">
-      <div className="mx-auto max-w-3xl px-6">
-        <h2 className="text-center">Frequently Asked Questions</h2>
-        <div className="mt-8 space-y-3">
-          {faqItems.map((item, index) => (
-            <div
-              key={index}
-              className="overflow-hidden rounded-lg border border-overlay0 bg-base"
-            >
-              <button
-                onClick={() => setOpenIndex(openIndex === index ? null : index)}
-                className="flex w-full items-center justify-between px-6 py-4 text-left text-text transition-colors hover:bg-surface0"
-              >
-                <span className="font-medium">{item.question}</span>
-                <span
-                  className={`transition-transform ${openIndex === index ? 'rotate-45' : ''}`}
-                >
-                  <Plus size={20} />
-                </span>
-              </button>
+    <section className="py-20">
+      <Reveal>
+        <div className="mx-auto max-w-3xl px-6">
+          <div className="mb-10 text-center">
+            <h2>Frequently Asked Questions</h2>
+            <p className="mx-auto max-w-lg">
+              Everything you need to know about NationCam.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {faqItems.map((item, index) => (
               <div
-                className={`overflow-hidden transition-all duration-300 ${
-                  openIndex === index ? 'max-h-40 px-6 pb-4' : 'max-h-0'
-                }`}
+                key={index}
+                className="overflow-hidden rounded-xl border border-overlay0 bg-surface0 transition-colors duration-200"
               >
-                <p className="mb-0 text-subtext1">{item.answer}</p>
+                <button
+                  onClick={() =>
+                    setOpenIndex(openIndex === index ? null : index)
+                  }
+                  className="flex w-full items-center justify-between px-6 py-5 text-left text-text transition-colors hover:bg-mantle"
+                >
+                  <span className="font-sans font-medium">{item.question}</span>
+                  <ChevronDown
+                    size={18}
+                    className={`shrink-0 text-subtext0 transition-transform duration-350 ease-[var(--spring-snappy)] ${
+                      openIndex === index ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+                <div
+                  className={`grid transition-all duration-350 ease-[var(--spring-smooth)] ${
+                    openIndex === index
+                      ? 'grid-rows-[1fr] pb-5'
+                      : 'grid-rows-[0fr]'
+                  }`}
+                >
+                  <div className="overflow-hidden px-6">
+                    <p className="mb-0 text-subtext1">{item.answer}</p>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
-    </section>
-  )
-}
-
-/* ──────────────────── Contact CTA ──────────────────── */
-
-function ContactCTA() {
-  return (
-    <section className="py-16 text-center">
-      <div className="mx-auto max-w-3xl px-6">
-        <h2>Want your camera on our site?</h2>
-        <p>
-          We are looking for people who want to share their cameras with the
-          world. If you have a camera that you would like to share, please
-          contact us.
-        </p>
-        <Link
-          to="/contact"
-          className="inline-block rounded-lg bg-accent px-8 py-3 font-semibold text-crust transition-colors hover:opacity-90"
-        >
-          Contact Us
-        </Link>
-      </div>
+      </Reveal>
     </section>
   )
 }

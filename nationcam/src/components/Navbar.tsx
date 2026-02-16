@@ -1,5 +1,5 @@
 import { Link, useRouter } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Github,
   Home,
@@ -22,98 +22,118 @@ const navLinks = [
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const { theme, toggleTheme } = useTheme()
   const router = useRouter()
   const currentPath = router.state.location.pathname
 
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 16)
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   return (
-    <nav className="fixed top-0 right-0 left-0 z-40 flex items-center justify-between bg-mantle px-4 py-3 shadow-lg">
-      {/* Left: Logo */}
-      <div className="flex items-center gap-3">
+    <nav
+      className={`fixed top-0 right-0 left-0 z-40 border-b transition-all duration-300 ${
+        scrolled
+          ? 'glass-dense border-overlay0/50 shadow-lg'
+          : 'border-transparent bg-transparent'
+      }`}
+    >
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
+        {/* Left: Logo */}
         <Logo />
-      </div>
 
-      {/* Center: Desktop nav links */}
-      <ul className="hidden items-center gap-6 md:flex">
-        {navLinks.map(({ to, label }) => {
-          const isActive =
-            to === '/' ? currentPath === '/' : currentPath.startsWith(to)
-          return (
-            <li key={to}>
-              <Link
-                to={to}
-                className={`text-sm font-medium transition-colors hover:text-accent ${
-                  isActive ? 'text-accent' : 'text-text'
-                }`}
-              >
-                {label}
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
-
-      {/* Right: Actions */}
-      <div className="flex items-center gap-2">
-        <a
-          href="https://github.com/brandon-relentnet/nationcam"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-lg p-2 text-text transition-colors hover:bg-surface0 hover:text-accent"
-        >
-          <Github size={20} />
-        </a>
-        <Link
-          to="/admin"
-          className="rounded-lg p-2 text-text transition-colors hover:bg-surface0 hover:text-accent"
-        >
-          <Settings size={20} />
-        </Link>
-        <button
-          onClick={toggleTheme}
-          className="rounded-lg p-2 text-text transition-colors hover:bg-surface0 hover:text-accent"
-        >
-          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-        </button>
-
-        {/* Mobile menu toggle */}
-        <button
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="rounded-lg p-2 text-text transition-colors hover:bg-surface0 md:hidden"
-          aria-label="Toggle menu"
-        >
-          {menuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </div>
-
-      {/* Mobile menu */}
-      <div
-        className={`absolute top-full right-0 left-0 border-t border-surface0 bg-mantle shadow-lg transition-all md:hidden ${
-          menuOpen
-            ? 'max-h-60 opacity-100'
-            : 'pointer-events-none max-h-0 overflow-hidden opacity-0'
-        }`}
-      >
-        <ul className="flex flex-col gap-1 p-4">
-          {navLinks.map(({ to, label, icon: Icon }) => {
+        {/* Center: Desktop nav links */}
+        <ul className="hidden items-center gap-1 md:flex">
+          {navLinks.map(({ to, label }) => {
             const isActive =
               to === '/' ? currentPath === '/' : currentPath.startsWith(to)
             return (
               <li key={to}>
                 <Link
                   to={to}
-                  onClick={() => setMenuOpen(false)}
-                  className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-colors hover:bg-surface0 ${
-                    isActive ? 'bg-surface0 text-accent' : 'text-text'
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ${
+                    isActive
+                      ? 'bg-accent/10 text-accent'
+                      : 'text-subtext1 hover:text-text hover:bg-surface0/50'
                   }`}
                 >
-                  <Icon size={18} />
-                  <span>{label}</span>
+                  {label}
                 </Link>
               </li>
             )
           })}
         </ul>
+
+        {/* Right: Actions */}
+        <div className="flex items-center gap-1">
+          <a
+            href="https://github.com/brandon-relentnet/nationcam"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg p-2 text-subtext0 transition-all duration-200 hover:text-text hover:bg-surface0/50"
+            aria-label="GitHub"
+          >
+            <Github size={18} />
+          </a>
+          <Link
+            to="/admin"
+            className="rounded-lg p-2 text-subtext0 transition-all duration-200 hover:text-text hover:bg-surface0/50"
+            aria-label="Admin"
+          >
+            <Settings size={18} />
+          </Link>
+          <button
+            onClick={toggleTheme}
+            className="rounded-lg p-2 text-subtext0 transition-all duration-200 hover:text-accent hover:bg-surface0/50"
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
+          {/* Mobile menu toggle */}
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="rounded-lg p-2 text-subtext0 transition-all duration-200 hover:text-text hover:bg-surface0/50 md:hidden"
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile menu */}
+      <div
+        className={`overflow-hidden border-t border-overlay0/30 transition-all duration-500 ease-[var(--spring-smooth)] md:hidden ${
+          menuOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'
+        }`}
+      >
+        <div className="glass-dense px-4 pb-4 pt-2">
+          <ul className="flex flex-col gap-1">
+            {navLinks.map(({ to, label, icon: Icon }) => {
+              const isActive =
+                to === '/' ? currentPath === '/' : currentPath.startsWith(to)
+              return (
+                <li key={to}>
+                  <Link
+                    to={to}
+                    onClick={() => setMenuOpen(false)}
+                    className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 ${
+                      isActive
+                        ? 'bg-accent/10 text-accent'
+                        : 'text-subtext1 hover:text-text hover:bg-surface0/50'
+                    }`}
+                  >
+                    <Icon size={18} />
+                    <span>{label}</span>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
       </div>
     </nav>
   )

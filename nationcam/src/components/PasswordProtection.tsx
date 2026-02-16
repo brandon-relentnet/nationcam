@@ -1,52 +1,70 @@
+import { Lock } from 'lucide-react'
 import { useState } from 'react'
+import Button from '@/components/Button'
 
 interface PasswordProtectionProps {
-  children: React.ReactNode
   password: string
+  children: React.ReactNode
 }
 
 export default function PasswordProtection({
-  children,
   password,
+  children,
 }: PasswordProtectionProps) {
   const [input, setInput] = useState('')
   const [authenticated, setAuthenticated] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (input === password) {
       setAuthenticated(true)
-      setError('')
+      setError(false)
     } else {
-      setError('Incorrect password.')
+      setError(true)
     }
   }
 
-  if (authenticated) {
-    return <>{children}</>
-  }
+  if (authenticated) return <>{children}</>
 
   return (
-    <div className="page-container flex items-center justify-center">
-      <div className="section-container w-full max-w-md">
-        <h3 className="text-center">Password Required</h3>
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          <input
-            type="password"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Enter password"
-            className="w-full rounded-lg border border-overlay0 bg-base px-4 py-3 text-text"
-          />
-          {error && <p className="mb-0 text-sm text-red">{error}</p>}
-          <button
-            type="submit"
-            className="w-full rounded-lg bg-accent py-3 font-semibold text-crust transition-colors hover:opacity-90"
-          >
-            Submit
-          </button>
-        </form>
+    <div className="flex min-h-[60vh] items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        <div className="rounded-xl border border-overlay0 bg-surface0 p-8 shadow-xl">
+          <div className="mb-6 flex flex-col items-center gap-3 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
+              <Lock size={20} className="text-accent" />
+            </div>
+            <h4 className="mb-0">Access Required</h4>
+            <p className="mb-0 text-sm text-subtext0">
+              Enter the password to continue
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <input
+              type="password"
+              placeholder="Password"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              className={`w-full rounded-lg border bg-base px-4 py-2.5 text-sm text-text placeholder-subtext0 transition-colors focus:outline-none focus:ring-1 focus:ring-accent/30 ${
+                error
+                  ? 'border-live focus:border-live'
+                  : 'border-overlay0 focus:border-accent'
+              }`}
+            />
+            {error && (
+              <p className="mb-0 text-xs text-live">Incorrect password</p>
+            )}
+            <Button
+              text="Unlock"
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="w-full"
+            />
+          </form>
+        </div>
       </div>
     </div>
   )
