@@ -1,4 +1,4 @@
-import { Link, useRouter } from '@tanstack/react-router'
+import { Link, useLocation } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import {
   Github,
@@ -24,8 +24,8 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const { theme, toggleTheme } = useTheme()
-  const router = useRouter()
-  const currentPath = router.state.location.pathname
+  const location = useLocation()
+  const currentPath = location.pathname
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 16)
