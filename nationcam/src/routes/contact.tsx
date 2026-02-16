@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import { Camera, CheckCircle, Mail, Send } from 'lucide-react'
+import { Camera, CheckCircle, Mail } from 'lucide-react'
 import Dropdown from '@/components/Dropdown'
 import Button from '@/components/Button'
 import Reveal from '@/components/Reveal'
@@ -11,8 +11,8 @@ function ContactPage() {
   return (
     <div className="page-container">
       <div className="grid grid-cols-1 gap-12 lg:grid-cols-5">
-        {/* Left — Info panel */}
-        <Reveal className="lg:col-span-2">
+        {/* Left — Info panel, slides from left */}
+        <Reveal variant="left" className="lg:col-span-2">
           <div>
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-4 py-1.5">
               <Camera size={14} className="text-accent" />
@@ -78,8 +78,8 @@ function ContactPage() {
           </div>
         </Reveal>
 
-        {/* Right — Form */}
-        <Reveal className="lg:col-span-3">
+        {/* Right — Form, slides from right */}
+        <Reveal variant="right" className="lg:col-span-3">
           <div>
             <ContactForm />
           </div>
@@ -165,7 +165,12 @@ function ContactForm() {
 
   if (submitted) {
     return (
-      <div className="section-container flex flex-col items-center py-12 text-center">
+      <div
+        className="section-container flex flex-col items-center py-12 text-center"
+        style={{
+          animation: 'scale-fade-in 500ms var(--spring-poppy) forwards',
+        }}
+      >
         <CheckCircle size={48} className="mb-4 text-accent" />
         <h3>Thank you!</h3>
         <p className="mb-0 max-w-sm">

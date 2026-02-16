@@ -59,6 +59,15 @@ export default function StreamPlayer({
     if (!video) return
 
     setIsLoading(true)
+    video.classList.remove('stream-ready')
+
+    const markReady = () => {
+      setIsLoading(false)
+      // Small delay so the shimmer fade-out and video fade-in overlap nicely
+      requestAnimationFrame(() => {
+        video.classList.add('stream-ready')
+      })
+    }
 
     if (isHls && Hls.isSupported()) {
       const hls = new Hls({
@@ -68,7 +77,7 @@ export default function StreamPlayer({
       hls.loadSource(src)
       hls.attachMedia(video)
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        setIsLoading(false)
+        markReady()
         if (autoplay) {
           video.play().catch(() => {
             /* browser may block autoplay */
@@ -94,14 +103,14 @@ export default function StreamPlayer({
       // Safari native HLS
       video.src = src
       video.addEventListener('loadedmetadata', () => {
-        setIsLoading(false)
+        markReady()
         if (autoplay) video.play().catch(() => {})
       })
     } else {
       // Native playback (MP4, WebM, etc.)
       video.src = src
       video.addEventListener('loadeddata', () => {
-        setIsLoading(false)
+        markReady()
         if (autoplay) video.play().catch(() => {})
       })
     }
@@ -188,15 +197,16 @@ export default function StreamPlayer({
         className="h-full w-full object-cover"
       />
 
-      {/* Loading shimmer */}
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-crust">
-          <div
-            className="h-full w-full bg-gradient-to-r from-crust via-surface0 to-crust bg-[length:200%_100%]"
-            style={{ animation: 'shimmer 1.5s ease-in-out infinite' }}
-          />
-        </div>
-      )}
+      {/* Loading shimmer — crossfades out as video fades in */}
+      <div
+        className="absolute inset-0 flex items-center justify-center bg-crust transition-opacity duration-500"
+        style={{ opacity: isLoading ? 1 : 0, pointerEvents: isLoading ? 'auto' : 'none' }}
+      >
+        <div
+          className="h-full w-full bg-gradient-to-r from-crust via-surface0 to-crust bg-[length:200%_100%]"
+          style={{ animation: 'shimmer 1.5s ease-in-out infinite' }}
+        />
+      </div>
 
       {/* LIVE badge */}
       {live && <LiveBadge className="absolute top-3 left-3 z-10" />}

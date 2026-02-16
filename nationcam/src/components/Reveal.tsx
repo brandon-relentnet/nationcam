@@ -1,29 +1,69 @@
 import { useReveal } from '@/hooks/useReveal'
 
+type RevealVariant = 'default' | 'left' | 'right' | 'scale' | 'blur' | 'float'
+
+const variantClassMap: Record<RevealVariant, string> = {
+  default: 'reveal',
+  left: 'reveal-left',
+  right: 'reveal-right',
+  scale: 'reveal-scale',
+  blur: 'reveal-blur',
+  float: 'reveal-float',
+}
+
 interface RevealProps {
   children: React.ReactNode
   className?: string
-  /** If true, staggers children that also have .reveal class */
+  /** Animation variant — controls direction and style of entrance */
+  variant?: RevealVariant
+  /** If true, staggers children that also have a reveal class */
   stagger?: boolean
 }
 
 /**
- * Wrapper that fades children in when they enter the viewport.
+ * Wrapper that animates children when they enter the viewport.
  * Uses IntersectionObserver + CSS animations (no JS animation library).
+ *
+ * Variants:
+ *  - default: fade + slide up
+ *  - left/right: fade + slide from side
+ *  - scale: fade + scale from center (poppy spring)
+ *  - blur: fade + deblur
+ *  - float: fade + large slide up with subtle scale
+ *
+ * When `stagger` is true, children are expected to have their own
+ * reveal variant classes (e.g. `reveal-scale`) and will be animated
+ * individually with staggered delays.
  */
 export default function Reveal({
   children,
   className = '',
+  variant = 'default',
   stagger = false,
 }: RevealProps) {
   const ref = useReveal<HTMLDivElement>()
 
+  // When stagger mode, the container just provides the stagger context.
+  // When non-stagger, the container itself is the reveal element.
+  const revealCls = stagger ? '' : variantClassMap[variant]
+  const staggerCls = stagger ? 'reveal-stagger' : ''
+
   return (
     <div
       ref={ref}
-      className={`${stagger ? 'reveal-stagger' : ''} ${className}`}
+      className={`${revealCls} ${staggerCls} ${className}`.trim()}
     >
       {children}
     </div>
   )
 }
+
+/**
+ * Returns the CSS class name for a given reveal variant.
+ * Use this when you need the class directly (e.g. on stagger children).
+ */
+export function revealClass(variant: RevealVariant = 'default'): string {
+  return variantClassMap[variant]
+}
+
+export type { RevealVariant }

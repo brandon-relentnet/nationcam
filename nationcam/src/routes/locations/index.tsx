@@ -23,7 +23,8 @@ function LocationsPage() {
   return (
     <div className="page-container">
       <AdvertisementLayout>
-        <Reveal>
+        {/* Header — blur entrance */}
+        <Reveal variant="blur">
           <div className="mb-10">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-4 py-1.5">
               <MapPin size={14} className="text-accent" />
@@ -41,10 +42,14 @@ function LocationsPage() {
 
         {loading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: 9 }).map((_, i) => (
               <div
                 key={i}
                 className="h-28 rounded-xl border border-overlay0 bg-surface0"
+                style={{
+                  opacity: 0,
+                  animation: `fade-in 400ms var(--spring-ease-out) ${i * 60}ms forwards`,
+                }}
               >
                 <div
                   className="h-full w-full rounded-xl bg-gradient-to-r from-surface0 via-mantle to-surface0 bg-[length:200%_100%]"
@@ -61,7 +66,7 @@ function LocationsPage() {
                   key={state.state_id}
                   to="/locations/$slug"
                   params={{ slug: state.slug ?? '' }}
-                  className="reveal group block rounded-xl border border-overlay0 bg-surface0 p-6 shadow-lg transition-all duration-350 ease-[var(--spring-snappy)] hover:scale-[1.01] hover:border-accent/40 hover:shadow-xl"
+                  className="reveal-float group block rounded-xl border border-overlay0 bg-surface0 p-6 shadow-lg transition-all duration-350 ease-[var(--spring-snappy)] hover:scale-[1.01] hover:border-accent/40 hover:shadow-xl"
                 >
                   <div className="flex items-start justify-between">
                     <div>

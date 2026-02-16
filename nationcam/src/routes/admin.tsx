@@ -5,6 +5,7 @@ import type { State, Sublocation } from '@/lib/types'
 import PasswordProtection from '@/components/PasswordProtection'
 import Dropdown from '@/components/Dropdown'
 import Button from '@/components/Button'
+import Reveal from '@/components/Reveal'
 import {
   createState,
   createSublocation,
@@ -44,46 +45,56 @@ function AdminDashboard() {
 
   return (
     <div className="page-container space-y-10">
-      <div>
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-4 py-1.5">
-          <Settings size={14} className="text-accent" />
-          <span className="font-mono text-xs font-medium text-accent">
-            Administration
-          </span>
+      {/* Header — blur entrance */}
+      <Reveal variant="blur">
+        <div>
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-4 py-1.5">
+            <Settings size={14} className="text-accent" />
+            <span className="font-mono text-xs font-medium text-accent">
+              Administration
+            </span>
+          </div>
+          <h1>Admin Dashboard</h1>
+          <p className="max-w-lg">
+            Manage cameras, states, and sublocations from this panel.
+          </p>
         </div>
-        <h1>Admin Dashboard</h1>
-        <p className="max-w-lg">
-          Manage cameras, states, and sublocations from this panel.
-        </p>
-      </div>
+      </Reveal>
 
-      <section>
-        <div className="mb-4 flex items-center gap-2">
-          <Film size={18} className="text-accent" />
-          <h3 className="mb-0">Add Video</h3>
-        </div>
-        <AddVideoForm
-          states={states}
-          sublocations={sublocations}
-          onSuccess={fetchData}
-        />
-      </section>
+      {/* Sections — staggered float entrance */}
+      <Reveal variant="float">
+        <section>
+          <div className="mb-4 flex items-center gap-2">
+            <Film size={18} className="text-accent" />
+            <h3 className="mb-0">Add Video</h3>
+          </div>
+          <AddVideoForm
+            states={states}
+            sublocations={sublocations}
+            onSuccess={fetchData}
+          />
+        </section>
+      </Reveal>
 
-      <section>
-        <div className="mb-4 flex items-center gap-2">
-          <MapPin size={18} className="text-accent" />
-          <h3 className="mb-0">Add State</h3>
-        </div>
-        <AddStateForm onSuccess={fetchData} />
-      </section>
+      <Reveal variant="float">
+        <section>
+          <div className="mb-4 flex items-center gap-2">
+            <MapPin size={18} className="text-accent" />
+            <h3 className="mb-0">Add State</h3>
+          </div>
+          <AddStateForm onSuccess={fetchData} />
+        </section>
+      </Reveal>
 
-      <section>
-        <div className="mb-4 flex items-center gap-2">
-          <Plus size={18} className="text-accent" />
-          <h3 className="mb-0">Add Sublocation</h3>
-        </div>
-        <AddSublocationForm states={states} onSuccess={fetchData} />
-      </section>
+      <Reveal variant="float">
+        <section>
+          <div className="mb-4 flex items-center gap-2">
+            <Plus size={18} className="text-accent" />
+            <h3 className="mb-0">Add Sublocation</h3>
+          </div>
+          <AddSublocationForm states={states} onSuccess={fetchData} />
+        </section>
+      </Reveal>
     </div>
   )
 }

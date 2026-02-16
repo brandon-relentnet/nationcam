@@ -39,7 +39,13 @@ function SublocationPage() {
   if (loading) {
     return (
       <div className="page-container">
-        <div className="flex flex-col items-center justify-center py-20">
+        <div
+          className="flex flex-col items-center justify-center py-20"
+          style={{
+            opacity: 0,
+            animation: 'scale-fade-in 500ms var(--spring-poppy) forwards',
+          }}
+        >
           <div
             className="h-8 w-8 rounded-full border-2 border-accent border-t-transparent"
             style={{ animation: 'spin 800ms linear infinite' }}
@@ -52,7 +58,7 @@ function SublocationPage() {
 
   if (!sublocation) {
     return (
-      <div className="page-container text-center">
+      <div className="page-container text-center page-enter">
         <h2>Location not found</h2>
         <p>The location you are looking for does not exist.</p>
         <Link
@@ -78,7 +84,7 @@ function SublocationPage() {
                 {videos.map((video) => (
                   <div
                     key={video.video_id}
-                    className="reveal group overflow-hidden rounded-xl border border-overlay0 bg-surface0 shadow-lg transition-all duration-350 ease-[var(--spring-snappy)] hover:border-accent/30 hover:shadow-xl"
+                    className="reveal-scale group overflow-hidden rounded-xl border border-overlay0 bg-surface0 shadow-lg transition-all duration-350 ease-[var(--spring-snappy)] hover:border-accent/30 hover:shadow-xl"
                   >
                     <StreamPlayer
                       src={video.src}
@@ -97,13 +103,15 @@ function SublocationPage() {
               </div>
             </Reveal>
           ) : (
-            <div className="section-container py-12 text-center">
-              <Video size={32} className="mx-auto mb-4 text-overlay1" />
-              <p className="mb-0">
-                No cameras available for {sublocation.name} yet. Check back
-                soon!
-              </p>
-            </div>
+            <Reveal variant="scale">
+              <div className="section-container py-12 text-center">
+                <Video size={32} className="mx-auto mb-4 text-overlay1" />
+                <p className="mb-0">
+                  No cameras available for {sublocation.name} yet. Check back
+                  soon!
+                </p>
+              </div>
+            </Reveal>
           )}
         </AdvertisementLayout>
       </div>

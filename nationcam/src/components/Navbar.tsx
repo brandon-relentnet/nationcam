@@ -45,7 +45,7 @@ export default function Navbar() {
         {/* Left: Logo */}
         <Logo />
 
-        {/* Center: Desktop nav links */}
+        {/* Center: Desktop nav links with hover pill effect */}
         <ul className="hidden items-center gap-1 md:flex">
           {navLinks.map(({ to, label }) => {
             const isActive =
@@ -54,40 +54,48 @@ export default function Navbar() {
               <li key={to}>
                 <Link
                   to={to}
-                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ${
+                  className={`relative rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ease-[var(--spring-smooth)] ${
                     isActive
                       ? 'bg-accent/10 text-accent'
                       : 'text-subtext1 hover:text-text hover:bg-surface0/50'
                   }`}
                 >
                   {label}
+                  {/* Active underline indicator */}
+                  <span
+                    className={`absolute right-2 bottom-0.5 left-2 h-0.5 rounded-full bg-accent transition-all duration-350 ease-[var(--spring-snappy)] ${
+                      isActive
+                        ? 'scale-x-100 opacity-100'
+                        : 'scale-x-0 opacity-0'
+                    }`}
+                  />
                 </Link>
               </li>
             )
           })}
         </ul>
 
-        {/* Right: Actions */}
+        {/* Right: Actions with hover scale */}
         <div className="flex items-center gap-1">
           <a
             href="https://github.com/brandon-relentnet/nationcam"
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-lg p-2 text-subtext0 transition-all duration-200 hover:text-text hover:bg-surface0/50"
+            className="rounded-lg p-2 text-subtext0 transition-all duration-200 ease-[var(--spring-gentle)] hover:scale-110 hover:text-text hover:bg-surface0/50"
             aria-label="GitHub"
           >
             <Github size={18} />
           </a>
           <Link
             to="/admin"
-            className="rounded-lg p-2 text-subtext0 transition-all duration-200 hover:text-text hover:bg-surface0/50"
+            className="rounded-lg p-2 text-subtext0 transition-all duration-200 ease-[var(--spring-gentle)] hover:scale-110 hover:text-text hover:bg-surface0/50"
             aria-label="Admin"
           >
             <Settings size={18} />
           </Link>
           <button
             onClick={toggleTheme}
-            className="rounded-lg p-2 text-subtext0 transition-all duration-200 hover:text-accent hover:bg-surface0/50"
+            className="rounded-lg p-2 text-subtext0 transition-all duration-200 ease-[var(--spring-gentle)] hover:scale-110 hover:text-accent hover:bg-surface0/50"
             aria-label="Toggle theme"
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
@@ -96,7 +104,7 @@ export default function Navbar() {
           {/* Mobile menu toggle */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="rounded-lg p-2 text-subtext0 transition-all duration-200 hover:text-text hover:bg-surface0/50 md:hidden"
+            className="rounded-lg p-2 text-subtext0 transition-all duration-200 ease-[var(--spring-gentle)] hover:scale-110 hover:text-text hover:bg-surface0/50 md:hidden"
             aria-label="Toggle menu"
           >
             {menuOpen ? <X size={22} /> : <Menu size={22} />}
@@ -104,19 +112,30 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile menu — smooth spring slide */}
       <div
         className={`overflow-hidden border-t border-overlay0/30 transition-all duration-500 ease-[var(--spring-smooth)] md:hidden ${
-          menuOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'
+          menuOpen
+            ? 'max-h-64 opacity-100'
+            : 'max-h-0 opacity-0 border-transparent'
         }`}
       >
         <div className="glass-dense px-4 pb-4 pt-2">
           <ul className="flex flex-col gap-1">
-            {navLinks.map(({ to, label, icon: Icon }) => {
+            {navLinks.map(({ to, label, icon: Icon }, index) => {
               const isActive =
                 to === '/' ? currentPath === '/' : currentPath.startsWith(to)
               return (
-                <li key={to}>
+                <li
+                  key={to}
+                  style={{
+                    opacity: menuOpen ? 1 : 0,
+                    transform: menuOpen
+                      ? 'translateX(0)'
+                      : 'translateX(-12px)',
+                    transition: `opacity 300ms ease ${index * 60}ms, transform 400ms var(--spring-smooth) ${index * 60}ms`,
+                  }}
+                >
                   <Link
                     to={to}
                     onClick={() => setMenuOpen(false)}
