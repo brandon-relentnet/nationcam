@@ -63,17 +63,17 @@ func (a *Auth) Authenticate(next http.Handler) http.Handler {
 	})
 }
 
-// RequireAdmin is middleware that rejects requests without an admin role.
+// RequireAdmin is middleware that rejects unauthenticated requests.
+// Currently any authenticated Logto user is treated as admin.
+// TODO: add proper role-based access control via Logto roles.
 func RequireAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		roles, _ := r.Context().Value(RolesKey).([]string)
-		for _, role := range roles {
-			if role == "admin" {
-				next.ServeHTTP(w, r)
-				return
-			}
+		userID, _ := r.Context().Value(UserIDKey).(string)
+		if userID == "" {
+			http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
+			return
 		}
-		http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
+		next.ServeHTTP(w, r)
 	})
 }
 
@@ -95,7 +95,7 @@ func (a *Auth) validateToken(ctx context.Context, rawToken string) (*tokenClaims
 		return nil, fmt.Errorf("fetch JWKS: %w", err)
 	}
 
-	tok, err := jose.ParseSigned(rawToken, []jose.SignatureAlgorithm{jose.RS256, jose.ES256})
+	tok, err := jose.ParseSigned(rawToken, []jose.SignatureAlgorithm{jose.RS256, jose.ES256, jose.ES384})
 	if err != nil {
 		return nil, fmt.Errorf("parse JWT: %w", err)
 	}
