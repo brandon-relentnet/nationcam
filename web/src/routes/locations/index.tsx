@@ -10,6 +10,100 @@ export const Route = createFileRoute('/locations/')({
   component: LocationsPage,
 })
 
+/* ──── State Grid (active-first, coming-soon below) ──── */
+
+function StateGrid({ states }: { states: Array<State> }) {
+  const active = states.filter((s) => s.video_count > 0)
+  const comingSoon = states.filter((s) => !s.video_count || s.video_count === 0)
+
+  // If every state is empty, just render them all normally
+  if (active.length === 0) {
+    return (
+      <Reveal stagger>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {states.map((state) => (
+            <StateCard key={state.state_id} state={state} muted />
+          ))}
+        </div>
+      </Reveal>
+    )
+  }
+
+  return (
+    <>
+      {/* Active states */}
+      <Reveal stagger>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {active.map((state) => (
+            <StateCard key={state.state_id} state={state} />
+          ))}
+        </div>
+      </Reveal>
+
+      {/* Coming soon states */}
+      {comingSoon.length > 0 && (
+        <Reveal variant="blur">
+          <div className="mt-12">
+            <h4 className="mb-4 font-mono text-sm font-medium text-overlay2">
+              Coming Soon
+            </h4>
+            <Reveal stagger>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {comingSoon.map((state) => (
+                  <StateCard key={state.state_id} state={state} muted />
+                ))}
+              </div>
+            </Reveal>
+          </div>
+        </Reveal>
+      )}
+    </>
+  )
+}
+
+/* ──── State Card ──── */
+
+function StateCard({ state, muted }: { state: State; muted?: boolean }) {
+  return (
+    <Link
+      to="/locations/$slug"
+      params={{ slug: state.slug }}
+      className={`reveal-float group block rounded-xl border p-6 shadow-lg transition-all duration-350 ease-[var(--spring-snappy)] hover:scale-[1.01] hover:shadow-xl ${
+        muted
+          ? 'border-overlay0/50 bg-surface0/50 hover:border-overlay0'
+          : 'border-overlay0 bg-surface0 hover:border-accent/40'
+      }`}
+    >
+      <div className="flex items-start justify-between">
+        <div>
+          <h4
+            className={`mb-1 transition-colors ${muted ? 'text-subtext0 group-hover:text-subtext1' : 'group-hover:text-accent'}`}
+          >
+            {state.name}
+          </h4>
+          {state.video_count > 0 ? (
+            <div className="flex items-center gap-1.5">
+              <Radio size={12} className="text-live" />
+              <span className="font-mono text-sm text-subtext0">
+                {state.video_count} camera
+                {state.video_count > 1 ? 's' : ''}
+              </span>
+            </div>
+          ) : (
+            <span className="font-mono text-sm text-overlay2">
+              Coming soon
+            </span>
+          )}
+        </div>
+        <MapPin
+          size={20}
+          className={`shrink-0 transition-colors ${muted ? 'text-overlay0 group-hover:text-overlay1' : 'text-overlay1 group-hover:text-accent'}`}
+        />
+      </div>
+    </Link>
+  )
+}
+
 function LocationsPage() {
   const [states, setStates] = useState<Array<State>>([])
   const [loading, setLoading] = useState(true)
@@ -59,43 +153,7 @@ function LocationsPage() {
             ))}
           </div>
         ) : (
-          <Reveal stagger>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {states.map((state) => (
-                <Link
-                  key={state.state_id}
-                  to="/locations/$slug"
-                  params={{ slug: state.slug }}
-                  className="reveal-float group block rounded-xl border border-overlay0 bg-surface0 p-6 shadow-lg transition-all duration-350 ease-[var(--spring-snappy)] hover:scale-[1.01] hover:border-accent/40 hover:shadow-xl"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="mb-1 transition-colors group-hover:text-accent">
-                        {state.name}
-                      </h4>
-                      {state.video_count && state.video_count > 0 ? (
-                        <div className="flex items-center gap-1.5">
-                          <Radio size={12} className="text-live" />
-                          <span className="font-mono text-sm text-subtext0">
-                            {state.video_count} camera
-                            {state.video_count > 1 ? 's' : ''}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="font-mono text-sm text-overlay2">
-                          Coming soon
-                        </span>
-                      )}
-                    </div>
-                    <MapPin
-                      size={20}
-                      className="shrink-0 text-overlay1 transition-colors group-hover:text-accent"
-                    />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </Reveal>
+          <StateGrid states={states} />
         )}
       </AdvertisementLayout>
     </div>
