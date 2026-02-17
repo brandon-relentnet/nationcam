@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -17,6 +18,11 @@ import { Route as LocationsIndexRouteImport } from './routes/locations/index'
 import { Route as LocationsSlugIndexRouteImport } from './routes/locations/$slug.index'
 import { Route as LocationsSlugSublocationSlugRouteImport } from './routes/locations/$slug.$sublocationSlug'
 
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/callback': typeof CallbackRoute
   '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
   '/locations/': typeof LocationsIndexRoute
   '/locations/$slug/$sublocationSlug': typeof LocationsSlugSublocationSlugRoute
   '/locations/$slug/': typeof LocationsSlugIndexRoute
@@ -68,6 +75,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/callback': typeof CallbackRoute
   '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
   '/locations': typeof LocationsIndexRoute
   '/locations/$slug/$sublocationSlug': typeof LocationsSlugSublocationSlugRoute
   '/locations/$slug': typeof LocationsSlugIndexRoute
@@ -78,6 +86,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/callback': typeof CallbackRoute
   '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
   '/locations/': typeof LocationsIndexRoute
   '/locations/$slug/$sublocationSlug': typeof LocationsSlugSublocationSlugRoute
   '/locations/$slug/': typeof LocationsSlugIndexRoute
@@ -89,6 +98,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/callback'
     | '/contact'
+    | '/dashboard'
     | '/locations/'
     | '/locations/$slug/$sublocationSlug'
     | '/locations/$slug/'
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/callback'
     | '/contact'
+    | '/dashboard'
     | '/locations'
     | '/locations/$slug/$sublocationSlug'
     | '/locations/$slug'
@@ -107,6 +118,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/callback'
     | '/contact'
+    | '/dashboard'
     | '/locations/'
     | '/locations/$slug/$sublocationSlug'
     | '/locations/$slug/'
@@ -117,6 +129,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   CallbackRoute: typeof CallbackRoute
   ContactRoute: typeof ContactRoute
+  DashboardRoute: typeof DashboardRoute
   LocationsIndexRoute: typeof LocationsIndexRoute
   LocationsSlugSublocationSlugRoute: typeof LocationsSlugSublocationSlugRoute
   LocationsSlugIndexRoute: typeof LocationsSlugIndexRoute
@@ -124,6 +137,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contact': {
       id: '/contact'
       path: '/contact'
@@ -181,6 +201,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   CallbackRoute: CallbackRoute,
   ContactRoute: ContactRoute,
+  DashboardRoute: DashboardRoute,
   LocationsIndexRoute: LocationsIndexRoute,
   LocationsSlugSublocationSlugRoute: LocationsSlugSublocationSlugRoute,
   LocationsSlugIndexRoute: LocationsSlugIndexRoute,

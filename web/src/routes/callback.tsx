@@ -7,7 +7,7 @@ function CallbackPage() {
   const navigate = useNavigate()
 
   const { isLoading } = useHandleSignInCallback(() => {
-    navigate({ to: '/admin' })
+    navigate({ to: '/dashboard' })
   })
 
   if (isLoading) {

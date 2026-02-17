@@ -1,18 +1,9 @@
 import { Link, useLocation } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import {
-  Github,
-  Home,
-  Mail,
-  MapPin,
-  Menu,
-  Moon,
-  Settings,
-  Sun,
-  X,
-} from 'lucide-react'
+import { Github, Home, Mail, MapPin, Menu, Moon, Sun, X } from 'lucide-react'
 import { useTheme } from '@/components/ThemeProvider'
 import Logo from '@/components/Logo'
+import UserMenu from '@/components/UserMenu'
 
 const navLinks = [
   { to: '/' as const, label: 'Home', icon: Home },
@@ -75,7 +66,7 @@ export default function Navbar() {
           })}
         </ul>
 
-        {/* Right: Actions with hover scale */}
+        {/* Right: Actions */}
         <div className="flex items-center gap-1">
           <a
             href="https://github.com/brandon-relentnet/nationcam"
@@ -86,13 +77,6 @@ export default function Navbar() {
           >
             <Github size={18} />
           </a>
-          <Link
-            to="/admin"
-            className="rounded-lg p-2 text-subtext0 transition-all duration-200 ease-[var(--spring-gentle)] hover:scale-110 hover:text-text hover:bg-surface0/50"
-            aria-label="Admin"
-          >
-            <Settings size={18} />
-          </Link>
           <button
             onClick={toggleTheme}
             className="rounded-lg p-2 text-subtext0 transition-all duration-200 ease-[var(--spring-gentle)] hover:scale-110 hover:text-accent hover:bg-surface0/50"
@@ -100,6 +84,11 @@ export default function Navbar() {
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
+
+          {/* User avatar / sign-in — desktop */}
+          <div className="hidden md:block">
+            <UserMenu />
+          </div>
 
           {/* Mobile menu toggle */}
           <button
@@ -116,7 +105,7 @@ export default function Navbar() {
       <div
         className={`overflow-hidden border-t border-overlay0/30 transition-all duration-500 ease-[var(--spring-smooth)] md:hidden ${
           menuOpen
-            ? 'max-h-64 opacity-100'
+            ? 'max-h-96 opacity-100'
             : 'max-h-0 opacity-0 border-transparent'
         }`}
       >
@@ -152,6 +141,11 @@ export default function Navbar() {
               )
             })}
           </ul>
+
+          {/* Mobile auth section */}
+          <div className="mt-2 border-t border-overlay0/30 pt-2">
+            <UserMenu />
+          </div>
         </div>
       </div>
     </nav>
