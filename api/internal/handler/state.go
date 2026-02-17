@@ -40,6 +40,27 @@ func GetState(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
 	}
 }
 
+// DeleteState handles DELETE /states/{slug} — deletes a state and cascades (admin only).
+func DeleteState(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		slug := chi.URLParam(r, "slug")
+		if slug == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "slug is required"})
+			return
+		}
+
+		if err := db.New(pool).DeleteState(r.Context(), slug); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		_ = c.Invalidate(r.Context(), "states:*")
+		_ = c.Invalidate(r.Context(), "sublocations:*")
+		_ = c.Invalidate(r.Context(), "videos:*")
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 type createStateRequest struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`

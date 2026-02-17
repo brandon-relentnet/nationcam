@@ -23,6 +23,7 @@ func NewRouter(pool *pgxpool.Pool, c *cache.Cache, auth *mw.Auth, corsOrigins []
 	r.Get("/states", ListStates(pool, c))
 	r.Get("/states/{slug}", GetState(pool, c))
 	r.With(mw.RequireAdmin).Post("/states", CreateState(pool, c))
+	r.With(mw.RequireAdmin).Delete("/states/{slug}", DeleteState(pool, c))
 
 	// Sublocations.
 	r.Get("/states/{slug}/sublocations", ListSublocationsByState(pool, c))

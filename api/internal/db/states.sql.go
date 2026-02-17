@@ -35,6 +35,15 @@ func (q *Queries) CreateState(ctx context.Context, arg CreateStateParams) (State
 	return i, err
 }
 
+const deleteState = `-- name: DeleteState :exec
+DELETE FROM states WHERE slug = $1
+`
+
+func (q *Queries) DeleteState(ctx context.Context, slug string) error {
+	_, err := q.db.Exec(ctx, deleteState, slug)
+	return err
+}
+
 const getStateByID = `-- name: GetStateByID :one
 SELECT s.state_id, s.name, s.description, s.slug, s.created_at, s.updated_at,
        COUNT(v.video_id)::int AS video_count

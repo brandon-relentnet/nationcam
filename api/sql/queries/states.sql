@@ -26,3 +26,6 @@ GROUP BY s.state_id;
 INSERT INTO states (name, description)
 VALUES ($1, $2)
 RETURNING state_id, name, description, slug, created_at, updated_at;
+
+-- name: DeleteState :exec
+DELETE FROM states WHERE slug = $1;
