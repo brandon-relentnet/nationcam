@@ -54,6 +54,9 @@ services:
   logto:
     image: svhd/logto:latest
     restart: unless-stopped
+    expose:
+      - "3001"
+      - "3002"
     entrypoint:
       - sh
       - -c
