@@ -36,6 +36,12 @@ Browser ──▶ nginx (web service)
 5. Go API validates JWT via JWKS endpoint (cached 1 hour)
 6. Admin role checked for write operations (POST endpoints)
 
+### Deployment Notes
+
+- **Logto DB seeding**: The Logto container automatically seeds its database and deploys schema alterations on startup via the custom entrypoint. No manual setup needed.
+- **Go API DATABASE_URL**: Uses pgx key-value DSN format (`host=... password=...`) instead of URL format to avoid issues with special characters in passwords.
+- **LOGTO_ENDPOINT for API**: Hardcoded to `http://logto:3001` (internal Docker network). The public `LOGTO_ENDPOINT` env var is only used by the Logto container itself and the frontend build.
+
 ## Commands
 
 ### Frontend (from `web/` directory, npm)

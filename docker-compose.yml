@@ -49,6 +49,13 @@ services:
   logto:
     image: svhd/logto:latest
     restart: unless-stopped
+    entrypoint:
+      - sh
+      - -c
+      - |
+        npm run cli db seed -- --swe &&
+        npm run cli db alteration deploy latest &&
+        npm start
     depends_on:
       logto-db:
         condition: service_healthy
@@ -73,9 +80,9 @@ services:
         condition: service_healthy
     environment:
       PORT: "8080"
-      DATABASE_URL: postgres://${POSTGRES_USER:-nationcam}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-nationcam}?sslmode=disable
+      DATABASE_URL: "host=postgres port=5432 user=${POSTGRES_USER:-nationcam} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB:-nationcam} sslmode=disable"
       REDIS_URL: redis://redis:6379/0
-      LOGTO_ENDPOINT: ${LOGTO_ENDPOINT:-http://logto:3001}
+      LOGTO_ENDPOINT: http://logto:3001
       LOGTO_RESOURCE: ${LOGTO_API_RESOURCE:-https://api.nationcam.com}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
 
