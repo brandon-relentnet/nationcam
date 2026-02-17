@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-NationCam — a live camera aggregation platform. React 19 SPA (TanStack Router) served by nginx, backed by a custom Go API (Chi router) with PostgreSQL and Redis. Authentication via self-hosted Logto (OIDC). Deployed via Docker Compose on Coolify.
+NationCam — a live camera aggregation platform. React 19 SPA (TanStack Router) served by nginx, backed by a custom Go API (Chi router) with PostgreSQL and Redis. Authentication via self-hosted Logto (OIDC), deployed as a separate Coolify service. The main stack is deployed via Docker Compose on Coolify.
 
 ## Architecture
 
@@ -11,59 +11,64 @@ Browser ──▶ nginx (web service)
                │
                ├── /api/*  ──▶  Go API (Chi) ──▶ PostgreSQL + Redis
                │
-               ├── /*       ──▶  React SPA (static files, index.html fallback)
-               │
-               └── auth.nationcam.com ──▶ Logto (self-hosted OIDC) ──▶ logto-db
+               └── /*       ──▶  React SPA (static files, index.html fallback)
+
+Browser ──▶ auth.nationcam.com ──▶ Logto (separate Coolify service, not in this compose)
 ```
 
-### Services (Docker Compose — 6 total)
+### Services (Docker Compose — 4 total)
 
 | Service    | Image / Build        | Purpose                         | Port  |
 | ---------- | -------------------- | ------------------------------- | ----- |
 | `postgres` | postgres:17-alpine   | App database (states, videos)   | 5432  |
-| `logto-db` | postgres:17-alpine   | Logto's own database            | 5432  |
 | `redis`    | redis:7-alpine       | Response cache (5-min TTL)      | 6379  |
-| `logto`    | svhd/logto:latest    | OIDC auth server                | 3301  |
 | `api`      | ./api (Go, built)    | Custom REST API                 | 8080  |
-| `web`      | ./web (nginx + SPA)  | Static frontend + /api/ proxy   | 3000  |
+| `web`      | ./web (nginx + SPA)  | Static frontend + /api/ proxy   | 80    |
 
 ### Auth Flow
 
 1. User clicks "Sign In" on admin page
-2. Browser redirects to Logto (`/callback` route handles return)
+2. Browser redirects to Logto at `auth.nationcam.com` (`/callback` route handles return)
 3. Logto issues access token scoped to API resource (`https://api.nationcam.com`)
 4. Frontend sends `Authorization: Bearer <token>` on admin write requests
-5. Go API validates JWT via JWKS endpoint (cached 1 hour)
+5. Go API validates JWT via Logto's JWKS endpoint (cached 1 hour)
 6. Admin role checked for write operations (POST endpoints)
+
+Logto is a **separate Coolify service** (not part of this docker-compose stack). The Go API reaches Logto via the public URL (`https://auth.nationcam.com`), not an internal Docker network address.
 
 ### Deployment (Coolify)
 
 **Domains** — set in Coolify's general tab per service (NOT env vars):
 - `web`: `https://nationcam.com`
-- `logto`: `https://auth.nationcam.com:3001,https://auth-admin.nationcam.com:3002`
-- `api`: `https://api.nationcam.com` (optional — frontend uses nginx proxy)
+- `api`: `https://api.nationcam.com` (optional — frontend accesses API via nginx proxy at `/api/*`)
 
-Coolify auto-generates `SERVICE_URL_WEB`, `SERVICE_URL_LOGTO`, etc. The docker-compose references these directly.
+Logto is deployed as a separate Coolify service with its own domains:
+- Auth endpoint: `https://auth.nationcam.com`
+- Admin console: `https://admin.auth.nationcam.com`
+
+Coolify auto-generates `SERVICE_URL_WEB`, `SERVICE_URL_API`, etc. The docker-compose references `SERVICE_URL_WEB` for CORS origins.
 
 **Custom env vars** — only 4 needed:
 ```
 POSTGRES_PASSWORD=<strong password>
-LOGTO_DB_PASSWORD=<strong password>
+LOGTO_ENDPOINT=https://auth.nationcam.com
 LOGTO_APP_ID=<from Logto admin console>
 LOGTO_API_RESOURCE=https://api.nationcam.com
 ```
 
 **First deploy steps:**
-1. Deploy with `LOGTO_APP_ID=` (empty)
-2. Open Logto admin console (`auth-admin.nationcam.com`)
-3. Create a "Single Page App" application, set redirect URI to `https://nationcam.com/callback`
-4. Create an API resource with identifier `https://api.nationcam.com`
-5. Copy the App ID → set `LOGTO_APP_ID` → redeploy
+1. Deploy Logto as a separate Coolify service first
+2. Open Logto admin console (`admin.auth.nationcam.com`)
+3. Create a "React" application, set redirect URI to `https://nationcam.com/callback`
+4. Set post sign-out redirect URI to `https://nationcam.com`
+5. Set CORS allowed origins to `https://nationcam.com`
+6. Create an API resource with identifier `https://api.nationcam.com`
+7. Copy the App ID → set `LOGTO_APP_ID` in Coolify env vars → redeploy the main stack
 
 **Technical notes:**
-- **Logto DB seeding**: The Logto container automatically seeds its database and deploys schema alterations on startup via the custom entrypoint. No manual setup needed.
-- **Logto endpoints**: The entrypoint parses `SERVICE_URL_LOGTO` (comma-separated) into `ENDPOINT` and `ADMIN_ENDPOINT` for Logto. The Go API always uses the hardcoded internal URL `http://logto:3001`.
+- **Go API LOGTO_ENDPOINT**: Points to the public Logto URL (`https://auth.nationcam.com`). The API fetches JWKS from `{LOGTO_ENDPOINT}/oidc/.well-known/openid-configuration` to validate JWTs.
 - **Go API DATABASE_URL**: Uses pgx key-value DSN format (`host=... password=...`) instead of URL format to avoid issues with special characters in passwords.
+- **Web Dockerfile build args**: `VITE_LOGTO_ENDPOINT`, `VITE_LOGTO_APP_ID`, and `VITE_LOGTO_API_RESOURCE` are passed as build args and baked into the SPA at build time.
 
 ## Commands
 
@@ -106,7 +111,7 @@ docker compose up -d             # Start all services
 docker compose up -d --build     # Rebuild and start
 docker compose down              # Stop all services
 docker compose logs -f api       # View Go API logs
-docker compose logs -f logto     # View Logto logs
+docker compose logs -f web       # View nginx/SPA logs
 ```
 
 ## Project Structure
@@ -114,7 +119,7 @@ docker compose logs -f logto     # View Logto logs
 ```
 new-nationcam/                        # Repo root
   AGENTS.md                           # This file
-  docker-compose.yml                  # 6 services: postgres, logto-db, redis, logto, api, web
+  docker-compose.yml                  # 4 services: postgres, redis, api, web
   .env.example                        # Docker env vars template
   .gitignore
   docker/
@@ -135,7 +140,7 @@ new-nationcam/                        # Repo root
     internal/
       config/config.go                # Env var loading
       cache/redis.go                  # Redis client wrapper (GET/SET/Invalidate)
-      db/                             # ⚠️ GENERATED BY sqlc — DO NOT EDIT
+      db/                             # GENERATED BY sqlc — DO NOT EDIT
         db.go
         models.go
         states.sql.go
@@ -163,36 +168,52 @@ new-nationcam/                        # Repo root
     src/
       main.tsx                        # Client-side mount
       router.tsx                      # Router factory
-      routeTree.gen.ts                # ⚠️ AUTO-GENERATED — DO NOT EDIT
+      routeTree.gen.ts                # AUTO-GENERATED by TanStack Router — DO NOT EDIT
       styles.css                      # Tailwind v4 + Observatory theme
       components/
-        LogtoProvider.tsx             # Logto OIDC config + provider wrapper
-        ThemeProvider.tsx             # Dark/light theme context
-        Navbar.tsx                    # Main nav
-        Footer.tsx                    # 4-column footer
+        AdvertisementLayout.tsx       # Ad placement layout
         Button.tsx                    # Generic button
+        ContactCTA.tsx                # Contact call-to-action section
         Dropdown.tsx                  # Custom select
+        Footer.tsx                    # 4-column footer
+        GrainOverlay.tsx              # Film grain visual effect
+        LiveBadge.tsx                 # "LIVE" indicator badge
+        LocationsHeroSection.tsx      # Hero section for locations pages
+        Logo.tsx                      # NationCam logo component
+        LogtoProvider.tsx             # Logto OIDC config + provider wrapper
+        Navbar.tsx                    # Main nav
         Reveal.tsx                    # Scroll animation wrapper
-        StreamPlayer.tsx             # HLS/MP4 player
-        ... (other UI components)
+        StreamPlayer.tsx              # HLS/MP4 player
+        ThemeProvider.tsx             # Dark/light theme context
       hooks/
-        useAuth.ts                   # Logto auth wrapper (login, logout, getToken)
-        useReveal.ts                 # IntersectionObserver hook
+        useAuth.ts                    # Logto auth wrapper (login, logout, getToken)
+        useReveal.ts                  # IntersectionObserver hook
       lib/
-        api.ts                       # Go API fetch wrapper (GET/POST with token)
-        types.ts                     # TypeScript interfaces (State, Sublocation, Video)
-        utils.ts                     # Utility functions
+        api.ts                        # Go API fetch wrapper (GET/POST with token)
+        buttonRedirects.ts            # Button link/redirect config
+        types.ts                      # TypeScript interfaces (State, Sublocation, Video)
+        utils.ts                      # Utility functions
       routes/
-        __root.tsx                   # Root layout (LogtoProvider → ThemeProvider → Navbar)
-        index.tsx                    # Home page
-        callback.tsx                 # Logto sign-in callback handler
-        admin.tsx                    # Admin dashboard (Logto-protected)
-        contact.tsx                  # Contact form
+        __root.tsx                    # Root layout (LogtoProvider → ThemeProvider → Navbar)
+        index.tsx                     # Home page
+        callback.tsx                  # Logto sign-in callback handler
+        admin.tsx                     # Admin dashboard (Logto-protected)
+        contact.tsx                   # Contact form
         locations/
-          index.tsx                  # States grid
-          $slug.tsx                  # State detail (videos by sublocation)
-          $slug.$sublocationSlug.tsx # Sublocation detail (video grid)
-    public/                          # Static assets (videos, logos, buttons, ads)
+          index.tsx                   # States grid
+          $slug.tsx                   # State detail (videos by sublocation)
+          $slug.$sublocationSlug.tsx  # Sublocation detail (video grid)
+    public/                           # Static assets
+      ads/                            # Advertisement images
+      buttons/                        # Button assets
+      logos/                          # Logo variations
+      videos/                         # Video assets
+      favicon.ico
+      favicon.svg
+      logo192.png
+      logo512.png
+      manifest.json                   # PWA manifest
+      robots.txt
 ```
 
 ### Generated Files — Do NOT Edit
