@@ -1,4 +1,5 @@
 services:
+  # ── App Database (PostgreSQL) ──────────────────────────────
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
@@ -8,37 +9,91 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./docker/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./docker/app-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nationcam}"]
       interval: 5s
       timeout: 3s
       retries: 5
 
-  postgrest:
-    image: postgrest/postgrest:v12.2.0
+  # ── Logto Database (PostgreSQL) ────────────────────────────
+  logto-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: logto
+      POSTGRES_USER: logto
+      POSTGRES_PASSWORD: ${LOGTO_DB_PASSWORD:?Set LOGTO_DB_PASSWORD}
+    volumes:
+      - logto-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U logto"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Redis ──────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Logto (OIDC Auth Server) ───────────────────────────────
+  logto:
+    image: svhd/logto:latest
+    restart: unless-stopped
+    depends_on:
+      logto-db:
+        condition: service_healthy
+    environment:
+      TRUST_PROXY_HEADER: "1"
+      DB_URL: postgres://logto:${LOGTO_DB_PASSWORD}@logto-db:5432/logto
+      ENDPOINT: ${LOGTO_ENDPOINT:-http://localhost:3301}
+      ADMIN_ENDPOINT: ${LOGTO_ADMIN_ENDPOINT:-http://localhost:3302}
+    ports:
+      - "${LOGTO_PORT:-3301}:3001"
+      - "${LOGTO_ADMIN_PORT:-3302}:3002"
+
+  # ── Go API ────────────────────────────────────────────────
+  api:
+    build:
+      context: ./api
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
-      PGRST_DB_URI: postgres://${POSTGRES_USER:-nationcam}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-nationcam}
-      PGRST_DB_SCHEMAS: public
-      PGRST_DB_ANON_ROLE: web_anon
-      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET:?Set PGRST_JWT_SECRET (min 32 chars)}
-      PGRST_DB_MAX_ROWS: "1000"
+      PORT: "8080"
+      DATABASE_URL: postgres://${POSTGRES_USER:-nationcam}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-nationcam}?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      LOGTO_ENDPOINT: ${LOGTO_ENDPOINT:-http://logto:3001}
+      LOGTO_RESOURCE: ${LOGTO_API_RESOURCE:-https://api.nationcam.com}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
 
-  app:
+  # ── Web (nginx + React SPA) ───────────────────────────────
+  web:
     build:
-      context: ./nationcam
+      context: ./web
       args:
-        VITE_PAGE_PASSWORD: ${VITE_PAGE_PASSWORD:-}
-        VITE_ADMIN_JWT: ${VITE_ADMIN_JWT:-}
+        VITE_LOGTO_ENDPOINT: ${LOGTO_ENDPOINT:-http://localhost:3301}
+        VITE_LOGTO_APP_ID: ${LOGTO_APP_ID:-}
+        VITE_LOGTO_API_RESOURCE: ${LOGTO_API_RESOURCE:-https://api.nationcam.com}
     restart: unless-stopped
     depends_on:
-      - postgrest
+      - api
     ports:
       - "${APP_PORT:-3000}:80"
 
 volumes:
   pgdata:
+  logto-pgdata:
+  redisdata:

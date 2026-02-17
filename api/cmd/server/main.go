@@ -1,0 +1,105 @@
+package main
+
+import (
+	"context"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/brandon-relentnet/nationcam/api/internal/cache"
+	"github.com/brandon-relentnet/nationcam/api/internal/config"
+	"github.com/brandon-relentnet/nationcam/api/internal/handler"
+	"github.com/brandon-relentnet/nationcam/api/internal/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+func main() {
+	// Structured logging.
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})))
+
+	if err := run(); err != nil {
+		slog.Error("fatal", "error", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// ── Load config ────────────────────────────────────────────────
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	slog.Info("config loaded",
+		"port", cfg.Port,
+		"logto_endpoint", cfg.LogtoEndpoint,
+	)
+
+	// ── Connect to PostgreSQL ──────────────────────────────────────
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	if err := pool.Ping(ctx); err != nil {
+		return err
+	}
+	slog.Info("postgres connected")
+
+	// ── Connect to Redis ───────────────────────────────────────────
+	redisCache, err := cache.New(ctx, cfg.RedisURL)
+	if err != nil {
+		return err
+	}
+	defer redisCache.Close()
+	slog.Info("redis connected")
+
+	// ── Auth middleware ─────────────────────────────────────────────
+	auth := middleware.NewAuth(cfg.LogtoEndpoint, cfg.LogtoResource)
+
+	// ── Build router ───────────────────────────────────────────────
+	router := handler.NewRouter(pool, redisCache, auth, cfg.CORSOrigins)
+
+	// ── HTTP server ────────────────────────────────────────────────
+	srv := &http.Server{
+		Addr:         ":" + cfg.Port,
+		Handler:      router,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// ── Graceful shutdown ──────────────────────────────────────────
+	errCh := make(chan error, 1)
+	go func() {
+		slog.Info("server listening", "addr", srv.Addr)
+		errCh <- srv.ListenAndServe()
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case sig := <-quit:
+		slog.Info("shutdown signal received", "signal", sig)
+	case err := <-errCh:
+		if err != nil && err != http.ErrServerClosed {
+			return err
+		}
+	}
+
+	// Give in-flight requests 10 seconds to finish.
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	slog.Info("shutting down server")
+	return srv.Shutdown(shutdownCtx)
+}

@@ -4,3 +4,18 @@ nationcam-old/
 # Environment files
 .env
 .env.local
+.env.publish
+
+# Node
+web/node_modules/
+web/dist/
+
+# Go
+api/bin/
+
+# Build output
+.output/
+
+# OS
+.DS_Store
+Thumbs.db
