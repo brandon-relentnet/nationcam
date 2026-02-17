@@ -73,9 +73,6 @@ services:
     environment:
       TRUST_PROXY_HEADER: "1"
       DB_URL: postgres://logto:${LOGTO_DB_PASSWORD}@logto-db:5432/logto
-    ports:
-      - "3001:3001"
-      - "3002:3002"
 
   # ── Go API ────────────────────────────────────────────────
   api:
@@ -107,8 +104,6 @@ services:
     restart: unless-stopped
     depends_on:
       - api
-    ports:
-      - "3000:80"
 
 volumes:
   pgdata:
