@@ -68,7 +68,7 @@ function StateCard({ state, muted }: { state: State; muted?: boolean }) {
     <Link
       to="/locations/$slug"
       params={{ slug: state.slug }}
-      className={`reveal-float group block rounded-xl border p-6 shadow-lg transition-all duration-350 ease-[var(--spring-snappy)] hover:scale-[1.01] hover:shadow-xl ${
+      className={`reveal-float group block rounded-xl border p-6 shadow-lg transition-[scale,border-color,box-shadow] duration-350 ease-[var(--spring-snappy)] hover:scale-[1.01] hover:shadow-xl ${
         muted
           ? 'border-overlay0/50 bg-surface0/50 hover:border-overlay0'
           : 'border-overlay0 bg-surface0 hover:border-accent/40'

@@ -7,7 +7,7 @@ export default function GrainOverlay() {
     <div
       aria-hidden="true"
       className="pointer-events-none fixed inset-0 z-[9999] opacity-[0.028] mix-blend-overlay dark:opacity-[0.04]"
-      style={{ animation: 'grain-drift 8s steps(6) infinite' }}
+      style={{ animation: 'grain-drift 8s steps(6) infinite', willChange: 'transform' }}
     >
       <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
         <filter id="grain">

@@ -210,7 +210,7 @@ function DashboardContent({ userName }: { userName: string | null }) {
       <div className="relative flex border-b border-overlay0">
         {/* Sliding indicator */}
         <div
-          className="absolute bottom-0 h-0.5 rounded-full bg-accent transition-all duration-300 ease-[var(--spring-snappy)]"
+          className="absolute bottom-0 h-0.5 rounded-full bg-accent transition-transform duration-300 ease-[var(--spring-snappy)]"
           style={{
             width: `${100 / TABS.length}%`,
             transform: `translateX(${tabIndex * 100}%)`,
@@ -287,7 +287,7 @@ function StatCard({
 }) {
   return (
     <div
-      className="group relative overflow-hidden rounded-xl border border-overlay0 bg-surface0 p-5 transition-all duration-300 ease-[var(--spring-gentle)] hover:border-accent/30 hover:shadow-lg"
+      className="group relative overflow-hidden rounded-xl border border-overlay0 bg-surface0 p-5 transition-[border-color,box-shadow] duration-300 ease-[var(--spring-gentle)] hover:border-accent/30 hover:shadow-lg"
       style={{
         opacity: 0,
         animation: `scale-fade-in 400ms var(--spring-poppy) ${delay}ms forwards`,
@@ -735,7 +735,7 @@ function DashInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-overlay0 bg-base px-3.5 py-2.5 font-sans text-sm text-text transition-all duration-200 placeholder:text-overlay1 focus:border-accent focus:ring-2 focus:ring-accent-glow focus:outline-none"
+        className="w-full rounded-lg border border-overlay0 bg-base px-3.5 py-2.5 font-sans text-sm text-text transition-[border-color,box-shadow] duration-200 placeholder:text-overlay1 focus:border-accent focus:ring-2 focus:ring-accent-glow focus:outline-none"
       />
     </div>
   )
@@ -752,7 +752,7 @@ function SubmitBtn({
     <button
       type="submit"
       disabled={submitting}
-      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-6 py-2.5 font-sans text-sm font-semibold text-crust shadow-md transition-all duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:bg-accent-hover hover:shadow-lg active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
+      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-6 py-2.5 font-sans text-sm font-semibold text-crust shadow-md transition-[scale,background-color,box-shadow,opacity] duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:bg-accent-hover hover:shadow-lg active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
     >
       {submitting && (
         <Loader2 size={16} className="animate-spin" />

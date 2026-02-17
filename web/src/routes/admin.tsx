@@ -90,7 +90,7 @@ function AdminPage() {
           {/* Dashboard link */}
           <Link
             to="/dashboard"
-            className="group flex items-start gap-4 rounded-xl border border-overlay0 bg-surface0 p-6 transition-all duration-200 ease-[var(--spring-gentle)] hover:border-accent/40 hover:shadow-lg"
+            className="group flex items-start gap-4 rounded-xl border border-overlay0 bg-surface0 p-6 transition-[border-color,box-shadow] duration-200 ease-[var(--spring-gentle)] hover:border-accent/40 hover:shadow-lg"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10 transition-colors group-hover:bg-accent/20">
               <LayoutDashboard size={20} className="text-accent" />
@@ -108,7 +108,7 @@ function AdminPage() {
             href={ADMIN_CONSOLE_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="group flex items-start gap-4 rounded-xl border border-overlay0 bg-surface0 p-6 transition-all duration-200 ease-[var(--spring-gentle)] hover:border-accent/40 hover:shadow-lg"
+            className="group flex items-start gap-4 rounded-xl border border-overlay0 bg-surface0 p-6 transition-[border-color,box-shadow] duration-200 ease-[var(--spring-gentle)] hover:border-accent/40 hover:shadow-lg"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10 transition-colors group-hover:bg-accent/20">
               <ExternalLink size={20} className="text-accent" />

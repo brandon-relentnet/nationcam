@@ -97,14 +97,14 @@ function HomeHeroSection() {
         >
           <Link
             to="/locations"
-            className="inline-flex items-center gap-2 rounded-lg bg-accent px-8 py-3 font-sans font-semibold text-crust transition-all duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:bg-accent-hover hover:shadow-lg active:scale-[0.98]"
+            className="inline-flex items-center gap-2 rounded-lg bg-accent px-8 py-3 font-sans font-semibold text-crust transition-[scale,background-color,box-shadow] duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:bg-accent-hover hover:shadow-lg active:scale-[0.98]"
           >
             <Map size={18} />
             Explore Locations
           </Link>
           <Link
             to="/contact"
-            className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-8 py-3 font-sans font-semibold text-white backdrop-blur-sm transition-all duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:border-white/40 hover:bg-white/10 active:scale-[0.98]"
+            className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-8 py-3 font-sans font-semibold text-white backdrop-blur-sm transition-[scale,border-color,background-color] duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:border-white/40 hover:bg-white/10 active:scale-[0.98]"
           >
             Add Your Camera
           </Link>
@@ -201,7 +201,7 @@ function StatsSection() {
             {stats.map((stat) => (
               <div
                 key={stat.label}
-                className="reveal-scale section-container flex flex-col items-center gap-3 py-8 transition-all duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:border-accent/30"
+                className="reveal-scale section-container flex flex-col items-center gap-3 py-8 transition-[scale,border-color] duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:border-accent/30"
               >
                 <stat.icon size={24} className="text-accent" />
                 <div className="font-mono text-4xl font-bold text-accent">
@@ -279,7 +279,7 @@ function FAQSection() {
                     />
                   </button>
                   <div
-                    className={`grid transition-all duration-350 ease-[var(--spring-smooth)] ${
+                    className={`grid transition-[grid-template-rows,padding] duration-350 ease-[var(--spring-smooth)] ${
                       openIndex === index
                         ? 'grid-rows-[1fr] pb-5'
                         : 'grid-rows-[0fr]'

@@ -41,7 +41,7 @@ export default function UserMenu() {
     return (
       <button
         onClick={login}
-        className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 font-sans text-sm font-medium text-subtext1 transition-all duration-200 ease-[var(--spring-gentle)] hover:bg-surface0/50 hover:text-text"
+        className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 font-sans text-sm font-medium text-subtext1 transition-colors duration-200 ease-[var(--spring-gentle)] hover:bg-surface0/50 hover:text-text"
       >
         <LogIn size={16} />
         <span className="hidden sm:inline">Sign In</span>
@@ -55,7 +55,7 @@ export default function UserMenu() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex h-8 w-8 items-center justify-center rounded-full border border-overlay0 bg-surface0 text-xs font-bold text-subtext1 transition-all duration-200 ease-[var(--spring-gentle)] hover:border-accent/40 hover:text-accent"
+        className="flex h-8 w-8 items-center justify-center rounded-full border border-overlay0 bg-surface0 text-xs font-bold text-subtext1 transition-colors duration-200 ease-[var(--spring-gentle)] hover:border-accent/40 hover:text-accent"
         aria-label="User menu"
       >
         {user?.picture ? (
@@ -71,7 +71,7 @@ export default function UserMenu() {
 
       {/* Dropdown */}
       <div
-        className={`absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-overlay0 bg-surface0 shadow-xl transition-all duration-350 ease-[var(--spring-smooth)] ${
+        className={`absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-overlay0 bg-surface0 shadow-xl transition-[scale,opacity] duration-350 ease-[var(--spring-smooth)] ${
           open
             ? 'pointer-events-auto scale-100 opacity-100'
             : 'pointer-events-none scale-95 opacity-0'

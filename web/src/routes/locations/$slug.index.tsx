@@ -72,7 +72,7 @@ function StatePage() {
         <p>The location you are looking for does not exist.</p>
         <Link
           to="/locations"
-          className="inline-flex items-center gap-2 rounded-lg bg-accent px-6 py-2.5 font-sans font-semibold text-crust transition-all duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:bg-accent-hover active:scale-[0.98]"
+          className="inline-flex items-center gap-2 rounded-lg bg-accent px-6 py-2.5 font-sans font-semibold text-crust transition-[scale,background-color] duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:bg-accent-hover active:scale-[0.98]"
         >
           Back to locations
         </Link>
@@ -188,7 +188,7 @@ function SublocationHeader({
 
 function VideoCard({ video }: { video: VideoType }) {
   return (
-    <div className="reveal-scale group overflow-hidden rounded-xl border border-overlay0 bg-surface0 shadow-lg transition-all duration-350 ease-[var(--spring-snappy)] hover:border-accent/30 hover:shadow-xl">
+    <div className="reveal-scale group overflow-hidden rounded-xl border border-overlay0 bg-surface0 shadow-lg transition-[border-color,box-shadow] duration-350 ease-[var(--spring-snappy)] hover:border-accent/30 hover:shadow-xl">
       <StreamPlayer src={video.src} type={video.type} muted controls fluid />
       <div className="px-4 py-3">
         <h5 className="mb-0 truncate transition-colors group-hover:text-accent">

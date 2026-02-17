@@ -66,7 +66,7 @@ function SublocationPage() {
         <Link
           to="/locations/$slug"
           params={{ slug }}
-          className="inline-flex items-center gap-2 rounded-lg bg-accent px-6 py-2.5 font-sans font-semibold text-crust transition-all duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:bg-accent-hover active:scale-[0.98]"
+          className="inline-flex items-center gap-2 rounded-lg bg-accent px-6 py-2.5 font-sans font-semibold text-crust transition-[scale,background-color] duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:bg-accent-hover active:scale-[0.98]"
         >
           Back to state
         </Link>
@@ -86,7 +86,7 @@ function SublocationPage() {
                 {videos.map((video) => (
                   <div
                     key={video.video_id}
-                    className="reveal-scale group overflow-hidden rounded-xl border border-overlay0 bg-surface0 shadow-lg transition-all duration-350 ease-[var(--spring-snappy)] hover:border-accent/30 hover:shadow-xl"
+                    className="reveal-scale group overflow-hidden rounded-xl border border-overlay0 bg-surface0 shadow-lg transition-[border-color,box-shadow] duration-350 ease-[var(--spring-snappy)] hover:border-accent/30 hover:shadow-xl"
                   >
                     <StreamPlayer
                       src={video.src}

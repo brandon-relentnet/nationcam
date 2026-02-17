@@ -44,7 +44,7 @@ export default function Dropdown({
         type="button"
         onClick={() => setOpen(!open)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
-        className="flex w-full items-center justify-between rounded-lg border border-overlay0 bg-surface0 px-4 py-2.5 text-sm text-text transition-all duration-200 hover:border-accent focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
+        className="flex w-full items-center justify-between rounded-lg border border-overlay0 bg-surface0 px-4 py-2.5 text-sm text-text transition-[color,border-color,box-shadow] duration-200 hover:border-accent focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
       >
         <span className={selectedLabel ? 'text-text' : 'text-subtext0'}>
           {selectedLabel || `Select ${label.toLowerCase()}`}
@@ -56,11 +56,14 @@ export default function Dropdown({
       </button>
 
       <div
-        className={`absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-overlay0 bg-surface0 shadow-xl transition-all duration-350 ease-[var(--spring-smooth)] ${
+        className={`absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-overlay0 bg-surface0 shadow-xl transition-[clip-path,opacity] duration-350 ease-[var(--spring-smooth)] ${
           open
-            ? 'pointer-events-auto max-h-60 opacity-100'
-            : 'pointer-events-none max-h-0 border-transparent opacity-0'
+            ? 'pointer-events-auto opacity-100'
+            : 'pointer-events-none border-transparent opacity-0'
         }`}
+        style={{
+          clipPath: open ? 'inset(0)' : 'inset(0 0 100% 0)',
+        }}
       >
         <ul className="max-h-56 overflow-y-auto py-1">
           {options.map((opt) => (

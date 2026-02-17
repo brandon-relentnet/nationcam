@@ -608,3 +608,45 @@ html.dark ::-webkit-scrollbar-thumb:hover {
   background: var(--color-accent);
   color: var(--color-crust);
 }
+
+/* ═══════════════════════════════════════════════
+   Reduced Motion — Accessibility
+   ═══════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .reveal,
+  .reveal-left,
+  .reveal-right,
+  .reveal-scale,
+  .reveal-blur,
+  .reveal-float {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    animation: none;
+  }
+
+  .reveal.revealed,
+  .reveal-left.revealed,
+  .reveal-right.revealed,
+  .reveal-scale.revealed,
+  .reveal-blur.revealed,
+  .reveal-float.revealed {
+    animation: fade-in 200ms ease forwards;
+  }
+
+  .page-enter {
+    animation: fade-in 200ms ease forwards;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
