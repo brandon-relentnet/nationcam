@@ -86,7 +86,7 @@ func StreamProxy() http.HandlerFunc {
 			strings.Contains(ct, "apple.mpegurl")
 
 		if isManifest {
-			body = rewriteManifest(body, rawURL, r)
+			body = rewriteManifest(body, rawURL)
 		}
 
 		// CORS headers — allow any origin.
@@ -113,24 +113,19 @@ func StreamProxy() http.HandlerFunc {
 	}
 }
 
+// proxyPath is the public-facing path to the stream proxy, as seen by the
+// browser (through nginx which maps /api/* → Go API).  We use a path-only
+// prefix (no scheme, no host) so that the browser resolves it against its
+// current origin, automatically inheriting the correct protocol (https).
+const proxyPath = "/api/stream-proxy"
+
 // rewriteManifest rewrites URLs inside an m3u8 manifest so that every segment
 // or sub-manifest request is also routed through the proxy.
-func rewriteManifest(body []byte, manifestURL string, r *http.Request) []byte {
+func rewriteManifest(body []byte, manifestURL string) []byte {
 	base, err := url.Parse(manifestURL)
 	if err != nil {
 		return body
 	}
-
-	// Determine our own proxy base URL (scheme + host + path).
-	scheme := "https"
-	if r.TLS == nil {
-		if fwd := r.Header.Get("X-Forwarded-Proto"); fwd != "" {
-			scheme = fwd
-		} else {
-			scheme = "http"
-		}
-	}
-	proxyBase := fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL.Path)
 
 	lines := strings.Split(string(body), "\n")
 	for i, line := range lines {
@@ -138,21 +133,21 @@ func rewriteManifest(body []byte, manifestURL string, r *http.Request) []byte {
 		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
 			// For EXT-X-MAP or EXT-X-MEDIA with URI="..." attributes, rewrite those too.
 			if strings.Contains(trimmed, "URI=\"") {
-				lines[i] = rewriteURIAttribute(trimmed, base, proxyBase)
+				lines[i] = rewriteURIAttribute(trimmed, base)
 			}
 			continue
 		}
 		// This is a URL line — resolve and proxy it.
-		lines[i] = proxyURL(trimmed, base, proxyBase)
+		lines[i] = proxyURL(trimmed, base)
 	}
 	return []byte(strings.Join(lines, "\n"))
 }
 
 // proxyURL resolves a potentially-relative URL against the manifest base, then
-// wraps it in a proxy URL.
-func proxyURL(raw string, base *url.URL, proxyBase string) string {
+// wraps it in a path-only proxy URL (e.g. /api/stream-proxy?url=...).
+func proxyURL(raw string, base *url.URL) string {
 	resolved := resolveURL(raw, base)
-	return fmt.Sprintf("%s?url=%s", proxyBase, url.QueryEscape(resolved))
+	return fmt.Sprintf("%s?url=%s", proxyPath, url.QueryEscape(resolved))
 }
 
 // resolveURL turns a relative or absolute URL into a fully-qualified URL using
@@ -169,7 +164,7 @@ func resolveURL(raw string, base *url.URL) string {
 }
 
 // rewriteURIAttribute handles lines like: #EXT-X-MAP:URI="init.mp4"
-func rewriteURIAttribute(line string, base *url.URL, proxyBase string) string {
+func rewriteURIAttribute(line string, base *url.URL) string {
 	idx := strings.Index(line, `URI="`)
 	if idx == -1 {
 		return line
@@ -180,6 +175,6 @@ func rewriteURIAttribute(line string, base *url.URL, proxyBase string) string {
 		return line
 	}
 	uri := line[start : start+end]
-	newURI := proxyURL(uri, base, proxyBase)
+	newURI := proxyURL(uri, base)
 	return line[:start] + newURI + line[start+end:]
 }
