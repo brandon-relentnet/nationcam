@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/brandon-relentnet/nationcam/api/internal/config"
 	"github.com/brandon-relentnet/nationcam/api/internal/handler"
 	"github.com/brandon-relentnet/nationcam/api/internal/middleware"
+	dbschema "github.com/brandon-relentnet/nationcam/api/sql"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -53,6 +55,12 @@ func run() error {
 		return err
 	}
 	slog.Info("postgres connected")
+
+	// ── Run schema migration (idempotent — safe on every startup) ──
+	if _, err := pool.Exec(ctx, dbschema.Schema); err != nil {
+		return fmt.Errorf("migrate schema: %w", err)
+	}
+	slog.Info("schema migration complete")
 
 	// ── Connect to Redis ───────────────────────────────────────────
 	redisCache, err := cache.New(ctx, cfg.RedisURL)

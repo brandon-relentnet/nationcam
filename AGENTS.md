@@ -122,8 +122,6 @@ new-nationcam/                        # Repo root
   docker-compose.yml                  # 4 services: postgres, redis, api, web
   .env.example                        # Docker env vars template
   .gitignore
-  docker/
-    app-init.sql                      # PostgreSQL schema (copy of api/sql/schema.sql)
   api/                                # Go API
     go.mod / go.sum
     sqlc.yaml                         # sqlc config (generates internal/db/)
