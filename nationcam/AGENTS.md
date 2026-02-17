@@ -71,7 +71,7 @@ new-nationcam/                    # Repo root
       main.tsx                    # Client-side mount (createRoot + RouterProvider)
       router.tsx                  # Router factory (getRouter)
       routeTree.gen.ts            # Auto-generated route tree (DO NOT EDIT)
-      styles.css                  # Global styles — Tailwind v4, Catppuccin theme, Video.js overrides
+      styles.css                  # Global styles — Tailwind v4, Observatory theme, spring easings, reveal animations
       components/                 # Reusable React components (PascalCase filenames)
         ThemeProvider.tsx          # Custom dark/light theme context (localStorage + html.dark)
         Navbar.tsx                 # Main nav — mobile menu, theme toggle, Lucide icons
@@ -83,8 +83,12 @@ new-nationcam/                    # Repo root
         AdvertisementLayout.tsx    # Responsive ad sidebar/banner layout
         PasswordProtection.tsx     # Client-side password gate (VITE_PAGE_PASSWORD)
         LocationsHeroSection.tsx   # Dynamic hero with background video
-        videos/
-          VideoPlayer.tsx          # video.js wrapper (HLS/DASH/MP4/WebM)
+        StreamPlayer.tsx           # HLS/MP4/WebM player (hls.js, Safari native fallback)
+        GrainOverlay.tsx           # Full-screen SVG grain texture overlay
+        LiveBadge.tsx              # Pulsing red "LIVE" indicator badge
+        Reveal.tsx                 # IntersectionObserver scroll-animation wrapper (6 variants)
+      hooks/                       # Custom React hooks
+        useReveal.ts               # IntersectionObserver hook for scroll-triggered animations
       lib/                         # Shared utilities and config
         api.ts                     # PostgREST fetch wrapper (GET/POST with JWT auth)
         types.ts                   # TypeScript interfaces (State, Sublocation, Video, User)
@@ -92,7 +96,7 @@ new-nationcam/                    # Repo root
         buttonRedirects.ts         # Slug-to-URL redirect map for sponsor buttons
       routes/                      # TanStack Router file-based routes
         __root.tsx                 # Root layout (ThemeProvider, Navbar, Footer)
-        index.tsx                  # Home page (hero, roadmap, FAQ, CTA)
+        index.tsx                  # Home page (hero, featured stream, stats, FAQ, CTA)
         contact.tsx                # Contact / camera signup form
         admin.tsx                  # Password-protected admin dashboard (3 forms)
         locations/
@@ -190,6 +194,8 @@ Config: `tsconfig.json` with strict mode enabled.
 - **Named exports** for route definitions (`export const Route = ...`)
 - **Lucide React** for icons (`import { Home, Menu } from 'lucide-react'`)
 - **Tailwind CSS v4** for all styling — use utility classes in `className`, avoid inline styles
+- **CSS spring easings** — custom `linear()` easings for animations (`--spring-snappy`, `--spring-smooth`, etc.), no JS animation libraries
+- **Scroll reveal animations** — wrap elements in `<Reveal>` (or `<Reveal variant="left">`, etc.) for entrance animations on scroll
 
 ## Error Handling
 
@@ -229,6 +235,6 @@ All API calls go through `/api/` which nginx proxies to PostgREST.
 | `@tanstack/react-router-devtools`   | Router devtools (dev only)               |
 | `tailwindcss` + `@tailwindcss/vite` | Styling (v4, Vite plugin)                |
 | `lucide-react`                      | Icon library                             |
-| `video.js`                          | Video player (HLS/DASH/MP4/WebM support) |
+| `hls.js`                            | HLS streaming (with native Safari fallback) |
 | `vite-tsconfig-paths`               | Resolves TS path aliases in Vite         |
 | `vitest` + `@testing-library/react` | Testing                                  |
