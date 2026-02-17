@@ -1,10 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { Film, LayoutDashboard, LogIn, MapPin, Plus } from 'lucide-react'
-import type { State, Sublocation } from '@/lib/types'
+import {
+  AlertCircle,
+  Check,
+  Film,
+  Landmark,
+  Loader2,
+  LogIn,
+  MapPin,
+} from 'lucide-react'
+import type { State, Sublocation, Video } from '@/lib/types'
 import { useAuth } from '@/hooks/useAuth'
-import Dropdown from '@/components/Dropdown'
 import Button from '@/components/Button'
+import Dropdown from '@/components/Dropdown'
 import Reveal from '@/components/Reveal'
 import {
   createState,
@@ -12,9 +20,45 @@ import {
   createVideo,
   fetchStates,
   fetchSublocationsByState,
+  fetchVideos,
 } from '@/lib/api'
 
+/* ──── Constants ──── */
+
+type Tab = 'cameras' | 'states' | 'sublocations'
+
+const TABS: Array<{ id: Tab; label: string; icon: typeof Film }> = [
+  { id: 'cameras', label: 'Cameras', icon: Film },
+  { id: 'states', label: 'States', icon: MapPin },
+  { id: 'sublocations', label: 'Sublocations', icon: Landmark },
+]
+
+const VIDEO_TYPE_OPTIONS = [
+  { value: 'application/x-mpegURL', label: 'HLS (recommended)' },
+  { value: 'video/mp4', label: 'MP4' },
+  { value: 'video/webm', label: 'WebM' },
+  { value: 'video/ogg', label: 'Ogg' },
+  { value: 'application/dash+xml', label: 'DASH' },
+]
+
+const VIDEO_TYPE_LABELS: Record<string, string> = {
+  'video/mp4': 'MP4',
+  'video/webm': 'WebM',
+  'video/ogg': 'Ogg',
+  'application/x-mpegURL': 'HLS',
+  'application/dash+xml': 'DASH',
+}
+
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+]
+
+const MAX_LIST_ITEMS = 8
+
 export const Route = createFileRoute('/dashboard')({ component: DashboardPage })
+
+/* ──── Auth Gate ──── */
 
 function DashboardPage() {
   const { isAuthenticated, isLoading, user, login } = useAuth()
@@ -71,37 +115,50 @@ function DashboardPage() {
   return <DashboardContent userName={user?.name ?? user?.username ?? null} />
 }
 
+/* ──── Dashboard Content ──── */
+
 function DashboardContent({ userName }: { userName: string | null }) {
   const { getToken } = useAuth()
   const [states, setStates] = useState<Array<State>>([])
   const [sublocations, setSublocations] = useState<Array<Sublocation>>([])
+  const [videos, setVideos] = useState<Array<Video>>([])
+  const [dataLoading, setDataLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<Tab>('cameras')
 
   const fetchData = async () => {
-    const statesData = await fetchStates()
-    setStates(statesData)
+    setDataLoading(true)
+    try {
+      const [statesData, videosData] = await Promise.all([
+        fetchStates(),
+        fetchVideos(),
+      ])
+      setStates(statesData)
+      setVideos(videosData)
 
-    const allSubs = await Promise.all(
-      statesData.map((s) => fetchSublocationsByState(s.slug)),
-    )
-    setSublocations(allSubs.flat())
+      const allSubs = await Promise.all(
+        statesData.map((s) => fetchSublocationsByState(s.slug)),
+      )
+      setSublocations(allSubs.flat())
+    } finally {
+      setDataLoading(false)
+    }
   }
 
   useEffect(() => {
     fetchData()
   }, [])
 
+  const tabIndex = TABS.findIndex((t) => t.id === activeTab)
+
   return (
-    <div className="page-container space-y-10">
+    <div className="page-container space-y-8">
       {/* Header */}
       <Reveal variant="blur">
         <div>
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-4 py-1.5">
-            <LayoutDashboard size={14} className="text-accent" />
-            <span className="font-mono text-xs font-medium text-accent">
-              Dashboard
-            </span>
-          </div>
-          <h1>
+          <p className="mb-2 font-mono text-xs font-medium tracking-widest text-accent uppercase">
+            Dashboard
+          </p>
+          <h1 className="!mb-1">
             {userName ? (
               <>
                 Welcome back,{' '}
@@ -111,82 +168,176 @@ function DashboardContent({ userName }: { userName: string | null }) {
               'Dashboard'
             )}
           </h1>
-          <p className="max-w-lg">
-            Manage cameras, states, and sublocations from this panel.
+          <p className="mb-0 max-w-lg text-subtext0">
+            Manage your cameras, states, and sublocations.
           </p>
         </div>
       </Reveal>
 
-      {/* Add Video */}
+      {/* Stats */}
       <Reveal variant="float">
-        <section>
-          <div className="mb-4 flex items-center gap-2">
-            <Film size={18} className="text-accent" />
-            <h3 className="mb-0">Add Video</h3>
+        {dataLoading ? (
+          <div className="grid grid-cols-3 gap-4">
+            {[0, 1, 2].map((i) => (
+              <StatSkeleton key={i} />
+            ))}
           </div>
-          <AddVideoForm
+        ) : (
+          <div className="grid grid-cols-3 gap-4">
+            <StatCard
+              icon={Film}
+              value={videos.length}
+              label="Active cameras"
+              delay={0}
+            />
+            <StatCard
+              icon={MapPin}
+              value={states.length}
+              label="States"
+              delay={80}
+            />
+            <StatCard
+              icon={Landmark}
+              value={sublocations.length}
+              label="Sublocations"
+              delay={160}
+            />
+          </div>
+        )}
+      </Reveal>
+
+      {/* Tab bar */}
+      <div className="relative flex border-b border-overlay0">
+        {/* Sliding indicator */}
+        <div
+          className="absolute bottom-0 h-0.5 rounded-full bg-accent transition-all duration-300 ease-[var(--spring-snappy)]"
+          style={{
+            width: `${100 / TABS.length}%`,
+            transform: `translateX(${tabIndex * 100}%)`,
+          }}
+        />
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex flex-1 items-center justify-center gap-2 py-3.5 text-sm font-medium transition-colors duration-200 ${
+              activeTab === tab.id
+                ? 'text-accent'
+                : 'text-subtext0 hover:text-text'
+            }`}
+          >
+            <tab.icon size={16} />
+            <span className="hidden sm:inline">{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div
+        key={activeTab}
+        style={{
+          opacity: 0,
+          animation: 'fade-in 250ms var(--spring-ease-out) forwards',
+        }}
+      >
+        {activeTab === 'cameras' && (
+          <CamerasPanel
             states={states}
             sublocations={sublocations}
-            onSuccess={fetchData}
+            videos={videos}
             getToken={getToken}
+            onSuccess={fetchData}
+            loading={dataLoading}
           />
-        </section>
-      </Reveal>
-
-      {/* Add State */}
-      <Reveal variant="float">
-        <section>
-          <div className="mb-4 flex items-center gap-2">
-            <MapPin size={18} className="text-accent" />
-            <h3 className="mb-0">Add State</h3>
-          </div>
-          <AddStateForm onSuccess={fetchData} getToken={getToken} />
-        </section>
-      </Reveal>
-
-      {/* Add Sublocation */}
-      <Reveal variant="float">
-        <section>
-          <div className="mb-4 flex items-center gap-2">
-            <Plus size={18} className="text-accent" />
-            <h3 className="mb-0">Add Sublocation</h3>
-          </div>
-          <AddSublocationForm
+        )}
+        {activeTab === 'states' && (
+          <StatesPanel
             states={states}
-            onSuccess={fetchData}
             getToken={getToken}
+            onSuccess={fetchData}
+            loading={dataLoading}
           />
-        </section>
-      </Reveal>
+        )}
+        {activeTab === 'sublocations' && (
+          <SublocationsPanel
+            states={states}
+            sublocations={sublocations}
+            getToken={getToken}
+            onSuccess={fetchData}
+            loading={dataLoading}
+          />
+        )}
+      </div>
     </div>
   )
 }
 
-/* ──── Add Video Form ──── */
+/* ──── Stats ──── */
 
-const videoTypeOptions = [
-  { value: 'video/mp4', label: 'MP4' },
-  { value: 'video/webm', label: 'WebM' },
-  { value: 'video/ogg', label: 'Ogg' },
-  { value: 'application/x-mpegURL', label: 'HLS' },
-  { value: 'application/dash+xml', label: 'DASH' },
-]
+function StatCard({
+  icon: Icon,
+  value,
+  label,
+  delay,
+}: {
+  icon: typeof Film
+  value: number
+  label: string
+  delay: number
+}) {
+  return (
+    <div
+      className="group relative overflow-hidden rounded-xl border border-overlay0 bg-surface0 p-5 transition-all duration-300 ease-[var(--spring-gentle)] hover:border-accent/30 hover:shadow-lg"
+      style={{
+        opacity: 0,
+        animation: `scale-fade-in 400ms var(--spring-poppy) ${delay}ms forwards`,
+      }}
+    >
+      {/* Decorative corner orb */}
+      <div className="absolute -top-6 -right-6 h-16 w-16 rounded-full bg-accent/5 transition-transform duration-500 ease-[var(--spring-smooth)] group-hover:scale-[2]" />
+      <div className="relative flex items-center gap-3.5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
+          <Icon size={20} className="text-accent" />
+        </div>
+        <div>
+          <p className="mb-0 font-display text-2xl leading-none font-bold text-text">
+            {value}
+          </p>
+          <p className="mb-0 text-xs font-medium text-subtext0">{label}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
 
-const statusOptions = [
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
-]
+function StatSkeleton() {
+  return (
+    <div className="flex items-center gap-3.5 rounded-xl border border-overlay0 bg-surface0 p-5">
+      <div className="h-10 w-10 animate-pulse rounded-lg bg-surface1" />
+      <div className="space-y-2">
+        <div className="h-6 w-12 animate-pulse rounded bg-surface1" />
+        <div className="h-3 w-16 animate-pulse rounded bg-surface1" />
+      </div>
+    </div>
+  )
+}
 
-function AddVideoForm({
+/* ──── Cameras Panel ──── */
+
+function CamerasPanel({
   states,
   sublocations,
-  onSuccess,
+  videos,
   getToken,
+  onSuccess,
+  loading,
 }: {
   states: Array<State>
   sublocations: Array<Sublocation>
-  onSuccess: () => void
+  videos: Array<Video>
   getToken: () => Promise<string | null>
+  onSuccess: () => void
+  loading: boolean
 }) {
   const [title, setTitle] = useState('')
   const [src, setSrc] = useState('')
@@ -194,12 +345,25 @@ function AddVideoForm({
   const [stateId, setStateId] = useState<number | ''>('')
   const [sublocationId, setSublocationId] = useState<number | ''>('')
   const [status, setStatus] = useState('active')
-  const [message, setMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [msg, setMsg] = useState<FormMsg>(null)
+
+  useAutoHide(msg, setMsg)
 
   const filteredSubs = sublocations.filter((s) => s.state_id === stateId)
+  const sortedVideos = [...videos].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  )
+  const displayed = sortedVideos.slice(0, MAX_LIST_ITEMS)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!title || !src || !type || !stateId) {
+      setMsg({ text: 'Please fill in all required fields.', ok: false })
+      return
+    }
+    setSubmitting(true)
+    setMsg(null)
     try {
       const token = await getToken()
       await createVideo(
@@ -213,134 +377,224 @@ function AddVideoForm({
         },
         token,
       )
-      setMessage('Video added successfully!')
+      setMsg({ text: 'Camera added successfully!', ok: true })
       setTitle('')
       setSrc('')
       setType('')
       setStateId('')
       setSublocationId('')
+      setStatus('active')
       onSuccess()
     } catch {
-      setMessage('Failed to add video.')
+      setMsg({ text: 'Failed to add camera.', ok: false })
+    } finally {
+      setSubmitting(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="section-container space-y-4">
-      <AdminInput label="Title" value={title} onChange={setTitle} />
-      <AdminInput label="Source URL" value={src} onChange={setSrc} />
+    <div className="grid gap-6 lg:grid-cols-5">
+      {/* Form */}
+      <div className="lg:col-span-2">
+        <FormCard title="Add Camera" icon={Film}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <DashInput
+              label="Title"
+              value={title}
+              onChange={setTitle}
+              placeholder="e.g. Miami Beach South Cam"
+            />
+            <DashInput
+              label="Source URL"
+              value={src}
+              onChange={setSrc}
+              placeholder="e.g. https://stream.example.com/live.m3u8"
+            />
+            <Dropdown
+              label="Video Type"
+              options={VIDEO_TYPE_OPTIONS}
+              selectedValue={type}
+              onSelect={(v) => setType(String(v))}
+            />
+            <Dropdown
+              label="State"
+              options={states.map((s) => ({
+                value: s.state_id,
+                label: s.name,
+              }))}
+              selectedValue={stateId}
+              onSelect={(v) => {
+                setStateId(Number(v))
+                setSublocationId('')
+              }}
+            />
+            {filteredSubs.length > 0 && (
+              <Dropdown
+                label="Sublocation"
+                options={filteredSubs.map((s) => ({
+                  value: s.sublocation_id,
+                  label: s.name,
+                }))}
+                selectedValue={sublocationId}
+                onSelect={(v) => setSublocationId(Number(v))}
+              />
+            )}
+            <Dropdown
+              label="Status"
+              options={STATUS_OPTIONS}
+              selectedValue={status}
+              onSelect={(v) => setStatus(String(v))}
+            />
+            <StatusBanner msg={msg} />
+            <SubmitBtn submitting={submitting} label="Add Camera" />
+          </form>
+        </FormCard>
+      </div>
 
-      <Dropdown
-        label="Video Type"
-        options={videoTypeOptions}
-        selectedValue={type}
-        onSelect={(v) => setType(String(v))}
-      />
-
-      <Dropdown
-        label="State"
-        options={states.map((s) => ({
-          value: s.state_id,
-          label: s.name,
-        }))}
-        selectedValue={stateId}
-        onSelect={(v) => {
-          setStateId(Number(v))
-          setSublocationId('')
-        }}
-      />
-
-      {filteredSubs.length > 0 && (
-        <Dropdown
-          label="Sublocation"
-          options={filteredSubs.map((s) => ({
-            value: s.sublocation_id,
-            label: s.name,
-          }))}
-          selectedValue={sublocationId}
-          onSelect={(v) => setSublocationId(Number(v))}
-        />
-      )}
-
-      <Dropdown
-        label="Status"
-        options={statusOptions}
-        selectedValue={status}
-        onSelect={(v) => setStatus(String(v))}
-      />
-
-      {message && (
-        <p className="mb-0 text-sm font-medium text-accent">{message}</p>
-      )}
-      <Button text="Add Video" type="submit" />
-    </form>
+      {/* List */}
+      <div className="lg:col-span-3">
+        <ListCard
+          title="Existing Cameras"
+          count={videos.length}
+          loading={loading}
+          empty={videos.length === 0}
+          emptyIcon={Film}
+          emptyText="No cameras yet. Add one to get started."
+        >
+          {displayed.map((v, i) => (
+            <VideoRow key={v.video_id} video={v} index={i} />
+          ))}
+          <ListFooter shown={displayed.length} total={videos.length} />
+        </ListCard>
+      </div>
+    </div>
   )
 }
 
-/* ──── Add State Form ──── */
+/* ──── States Panel ──── */
 
-function AddStateForm({
-  onSuccess,
+function StatesPanel({
+  states,
   getToken,
+  onSuccess,
+  loading,
 }: {
-  onSuccess: () => void
+  states: Array<State>
   getToken: () => Promise<string | null>
+  onSuccess: () => void
+  loading: boolean
 }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [message, setMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [msg, setMsg] = useState<FormMsg>(null)
+
+  useAutoHide(msg, setMsg)
+
+  const sorted = [...states].sort((a, b) => a.name.localeCompare(b.name))
+  const displayed = sorted.slice(0, MAX_LIST_ITEMS)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!name) {
+      setMsg({ text: 'Please enter a state name.', ok: false })
+      return
+    }
+    setSubmitting(true)
+    setMsg(null)
     try {
       const token = await getToken()
       await createState(
         { name, description: description || undefined },
         token,
       )
-      setMessage('State added successfully!')
+      setMsg({ text: 'State added successfully!', ok: true })
       setName('')
       setDescription('')
       onSuccess()
     } catch {
-      setMessage('Failed to add state.')
+      setMsg({ text: 'Failed to add state.', ok: false })
+    } finally {
+      setSubmitting(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="section-container space-y-4">
-      <AdminInput label="State Name" value={name} onChange={setName} />
-      <AdminInput
-        label="Description (optional)"
-        value={description}
-        onChange={setDescription}
-      />
-      {message && (
-        <p className="mb-0 text-sm font-medium text-accent">{message}</p>
-      )}
-      <Button text="Add State" type="submit" />
-    </form>
+    <div className="grid gap-6 lg:grid-cols-5">
+      <div className="lg:col-span-2">
+        <FormCard title="Add State" icon={MapPin}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <DashInput
+              label="State Name"
+              value={name}
+              onChange={setName}
+              placeholder="e.g. Florida"
+            />
+            <DashInput
+              label="Description"
+              value={description}
+              onChange={setDescription}
+              placeholder="Brief description (optional)"
+            />
+            <StatusBanner msg={msg} />
+            <SubmitBtn submitting={submitting} label="Add State" />
+          </form>
+        </FormCard>
+      </div>
+
+      <div className="lg:col-span-3">
+        <ListCard
+          title="Existing States"
+          count={states.length}
+          loading={loading}
+          empty={states.length === 0}
+          emptyIcon={MapPin}
+          emptyText="No states yet. Add one to get started."
+        >
+          {displayed.map((s, i) => (
+            <StateRow key={s.state_id} state={s} index={i} />
+          ))}
+          <ListFooter shown={displayed.length} total={states.length} />
+        </ListCard>
+      </div>
+    </div>
   )
 }
 
-/* ──── Add Sublocation Form ──── */
+/* ──── Sublocations Panel ──── */
 
-function AddSublocationForm({
+function SublocationsPanel({
   states,
-  onSuccess,
+  sublocations,
   getToken,
+  onSuccess,
+  loading,
 }: {
   states: Array<State>
-  onSuccess: () => void
+  sublocations: Array<Sublocation>
   getToken: () => Promise<string | null>
+  onSuccess: () => void
+  loading: boolean
 }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [stateId, setStateId] = useState<number | ''>('')
-  const [message, setMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [msg, setMsg] = useState<FormMsg>(null)
+
+  useAutoHide(msg, setMsg)
+
+  const sorted = [...sublocations].sort((a, b) => a.name.localeCompare(b.name))
+  const displayed = sorted.slice(0, MAX_LIST_ITEMS)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!name || !stateId) {
+      setMsg({ text: 'Please fill in all required fields.', ok: false })
+      return
+    }
+    setSubmitting(true)
+    setMsg(null)
     try {
       const token = await getToken()
       await createSublocation(
@@ -351,63 +605,362 @@ function AddSublocationForm({
         },
         token,
       )
-      setMessage('Sublocation added successfully!')
+      setMsg({ text: 'Sublocation added successfully!', ok: true })
       setName('')
       setDescription('')
       setStateId('')
       onSuccess()
     } catch {
-      setMessage('Failed to add sublocation.')
+      setMsg({ text: 'Failed to add sublocation.', ok: false })
+    } finally {
+      setSubmitting(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="section-container space-y-4">
-      <AdminInput label="Sublocation Name" value={name} onChange={setName} />
-      <AdminInput
-        label="Description (optional)"
-        value={description}
-        onChange={setDescription}
-      />
-      <Dropdown
-        label="State"
-        options={states.map((s) => ({
-          value: s.state_id,
-          label: s.name,
-        }))}
-        selectedValue={stateId}
-        onSelect={(v) => setStateId(Number(v))}
-      />
-      {message && (
-        <p className="mb-0 text-sm font-medium text-accent">{message}</p>
-      )}
-      <Button text="Add Sublocation" type="submit" />
-    </form>
+    <div className="grid gap-6 lg:grid-cols-5">
+      <div className="lg:col-span-2">
+        <FormCard title="Add Sublocation" icon={Landmark}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <DashInput
+              label="Sublocation Name"
+              value={name}
+              onChange={setName}
+              placeholder="e.g. Miami Beach"
+            />
+            <Dropdown
+              label="Parent State"
+              options={states.map((s) => ({
+                value: s.state_id,
+                label: s.name,
+              }))}
+              selectedValue={stateId}
+              onSelect={(v) => setStateId(Number(v))}
+            />
+            <DashInput
+              label="Description"
+              value={description}
+              onChange={setDescription}
+              placeholder="Brief description (optional)"
+            />
+            <StatusBanner msg={msg} />
+            <SubmitBtn submitting={submitting} label="Add Sublocation" />
+          </form>
+        </FormCard>
+      </div>
+
+      <div className="lg:col-span-3">
+        <ListCard
+          title="Existing Sublocations"
+          count={sublocations.length}
+          loading={loading}
+          empty={sublocations.length === 0}
+          emptyIcon={Landmark}
+          emptyText="No sublocations yet. Add one to get started."
+        >
+          {displayed.map((s, i) => (
+            <SublocationRow
+              key={s.sublocation_id}
+              sublocation={s}
+              index={i}
+            />
+          ))}
+          <ListFooter shown={displayed.length} total={sublocations.length} />
+        </ListCard>
+      </div>
+    </div>
   )
 }
 
-/* ──── Shared admin input ──── */
+/* ──── Form Shared Components ──── */
 
-function AdminInput({
+type FormMsg = { text: string; ok: boolean } | null
+
+/** Auto-dismiss form messages after 4 seconds. */
+function useAutoHide(
+  msg: FormMsg,
+  setMsg: (m: FormMsg) => void,
+) {
+  useEffect(() => {
+    if (!msg) return
+    const t = setTimeout(() => setMsg(null), 4000)
+    return () => clearTimeout(t)
+  }, [msg, setMsg])
+}
+
+function FormCard({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string
+  icon: typeof Film
+  children: React.ReactNode
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-overlay0 bg-surface0 shadow-lg">
+      {/* Accent top bar */}
+      <div className="h-1 bg-gradient-to-r from-accent via-accent/60 to-transparent" />
+      <div className="p-5">
+        <div className="mb-5 flex items-center gap-2.5">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-accent/10">
+            <Icon size={14} className="text-accent" />
+          </div>
+          <h5 className="mb-0 !text-base font-semibold text-text">{title}</h5>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function DashInput({
   label,
   value,
   onChange,
+  placeholder,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
+  placeholder?: string
 }) {
   return (
     <div>
-      <label className="mb-1.5 block font-sans text-sm font-medium text-subtext1">
+      <label className="mb-1.5 block font-sans text-xs font-medium text-subtext0">
         {label}
       </label>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-overlay0 bg-base px-4 py-3 font-sans text-sm text-text transition-all duration-200 placeholder:text-overlay1 focus:border-accent focus:ring-2 focus:ring-accent-glow focus:outline-none"
+        placeholder={placeholder}
+        className="w-full rounded-lg border border-overlay0 bg-base px-3.5 py-2.5 font-sans text-sm text-text transition-all duration-200 placeholder:text-overlay1 focus:border-accent focus:ring-2 focus:ring-accent-glow focus:outline-none"
       />
     </div>
   )
+}
+
+function SubmitBtn({
+  submitting,
+  label,
+}: {
+  submitting: boolean
+  label: string
+}) {
+  return (
+    <button
+      type="submit"
+      disabled={submitting}
+      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-6 py-2.5 font-sans text-sm font-semibold text-crust shadow-md transition-all duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:bg-accent-hover hover:shadow-lg active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
+    >
+      {submitting && (
+        <Loader2 size={16} className="animate-spin" />
+      )}
+      {submitting ? 'Adding...' : label}
+    </button>
+  )
+}
+
+function StatusBanner({ msg }: { msg: FormMsg }) {
+  if (!msg) return null
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-sm font-medium ${
+        msg.ok
+          ? 'border-teal/20 bg-teal/10 text-teal'
+          : 'border-live/20 bg-live/10 text-live'
+      }`}
+      style={{
+        opacity: 0,
+        animation: 'scale-fade-in 300ms var(--spring-poppy) forwards',
+      }}
+    >
+      {msg.ok ? <Check size={16} /> : <AlertCircle size={16} />}
+      {msg.text}
+    </div>
+  )
+}
+
+/* ──── List Shared Components ──── */
+
+function ListCard({
+  title,
+  count,
+  loading,
+  empty,
+  emptyIcon: EmptyIcon,
+  emptyText,
+  children,
+}: {
+  title: string
+  count: number
+  loading: boolean
+  empty: boolean
+  emptyIcon: typeof Film
+  emptyText: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-overlay0 bg-surface0 shadow-lg">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-overlay0/50 px-5 py-3.5">
+        <h5 className="mb-0 !text-sm font-medium text-subtext1">{title}</h5>
+        <span className="rounded-full bg-surface1 px-2.5 py-0.5 font-mono text-xs font-medium text-subtext0">
+          {count}
+        </span>
+      </div>
+
+      {/* Body */}
+      {loading ? (
+        <ListSkeleton />
+      ) : empty ? (
+        <div className="flex flex-col items-center gap-3 py-14 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface1">
+            <EmptyIcon size={22} className="text-subtext0" />
+          </div>
+          <p className="mb-0 max-w-[200px] text-sm text-subtext0">
+            {emptyText}
+          </p>
+        </div>
+      ) : (
+        <div className="divide-y divide-overlay0/30">{children}</div>
+      )}
+    </div>
+  )
+}
+
+function ListSkeleton() {
+  return (
+    <div className="divide-y divide-overlay0/30">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="flex items-center gap-4 px-5 py-3.5">
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-28 animate-pulse rounded bg-surface1" />
+            <div className="h-3 w-20 animate-pulse rounded bg-surface1" />
+          </div>
+          <div className="h-5 w-12 animate-pulse rounded-full bg-surface1" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ListFooter({ shown, total }: { shown: number; total: number }) {
+  if (total <= shown) return null
+  return (
+    <div className="border-t border-overlay0/30 px-5 py-3 text-center">
+      <p className="mb-0 text-xs text-subtext0">
+        Showing {shown} of {total} &mdash; most recent first
+      </p>
+    </div>
+  )
+}
+
+/* ──── Item Rows ──── */
+
+function VideoRow({ video, index }: { video: Video; index: number }) {
+  const typeLabel = VIDEO_TYPE_LABELS[video.type] ?? video.type
+  const isActive = video.status === 'active'
+  return (
+    <div
+      className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-surface1/50"
+      style={staggerStyle(index)}
+    >
+      <div className="min-w-0 flex-1">
+        <p className="mb-0 truncate text-sm font-medium text-text">
+          {video.title}
+        </p>
+        <p className="mb-0 truncate text-xs text-subtext0">
+          {video.state_name}
+          {video.sublocation_name ? ` \u00B7 ${video.sublocation_name}` : ''}
+        </p>
+      </div>
+      <span className="shrink-0 rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent">
+        {typeLabel}
+      </span>
+      <span
+        className={`inline-flex shrink-0 items-center gap-1.5 text-xs font-medium ${isActive ? 'text-teal' : 'text-subtext0'}`}
+      >
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-teal' : 'bg-overlay2'}`}
+        />
+        {isActive ? 'Live' : 'Off'}
+      </span>
+    </div>
+  )
+}
+
+function StateRow({ state, index }: { state: State; index: number }) {
+  return (
+    <div
+      className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-surface1/50"
+      style={staggerStyle(index)}
+    >
+      <div className="min-w-0 flex-1">
+        <p className="mb-0 truncate text-sm font-medium text-text">
+          {state.name}
+        </p>
+        <p className="mb-0 text-xs text-subtext0">{timeAgo(state.created_at)}</p>
+      </div>
+      <span className="shrink-0 rounded-full bg-surface1 px-2.5 py-0.5 font-mono text-xs text-subtext0">
+        {state.video_count} cam{state.video_count !== 1 ? 's' : ''}
+      </span>
+    </div>
+  )
+}
+
+function SublocationRow({
+  sublocation,
+  index,
+}: {
+  sublocation: Sublocation
+  index: number
+}) {
+  return (
+    <div
+      className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-surface1/50"
+      style={staggerStyle(index)}
+    >
+      <div className="min-w-0 flex-1">
+        <p className="mb-0 truncate text-sm font-medium text-text">
+          {sublocation.name}
+        </p>
+        <p className="mb-0 truncate text-xs text-subtext0">
+          {sublocation.state_name}
+        </p>
+      </div>
+      <span className="shrink-0 rounded-full bg-surface1 px-2.5 py-0.5 font-mono text-xs text-subtext0">
+        {sublocation.video_count} cam{sublocation.video_count !== 1 ? 's' : ''}
+      </span>
+    </div>
+  )
+}
+
+/* ──── Utilities ──── */
+
+function staggerStyle(index: number): React.CSSProperties | undefined {
+  if (index >= 10) return undefined
+  return {
+    opacity: 0,
+    animation: `fade-in-up 400ms var(--spring-smooth) ${index * 50}ms forwards`,
+  }
+}
+
+function timeAgo(dateStr: string): string {
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return ''
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }

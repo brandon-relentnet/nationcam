@@ -101,6 +101,10 @@ export async function createSublocation(
 
 /* ──── Videos ──── */
 
+export async function fetchVideos(): Promise<Array<Video>> {
+  return get<Array<Video>>('/videos')
+}
+
 export async function fetchVideosByState(
   stateId: number,
 ): Promise<Array<Video>> {
