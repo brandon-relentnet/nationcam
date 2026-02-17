@@ -48,7 +48,8 @@ services:
   # ── Logto (OIDC Auth Server) ───────────────────────────────
   # Domains set in Coolify general tab (not env vars):
   #   https://auth.nationcam.com:3001,https://auth-admin.nationcam.com:3002
-  # Coolify auto-generates SERVICE_URL_LOGTO from those domains.
+  # Coolify auto-generates SERVICE_FQDN_LOGTO (all domains) and
+  # SERVICE_URL_LOGTO (first domain only). We need FQDN to get both.
   logto:
     image: svhd/logto:latest
     restart: unless-stopped
@@ -56,11 +57,11 @@ services:
       - sh
       - -c
       - |
-        # Parse Coolify's SERVICE_URL_LOGTO (comma-separated):
-        #   "https://auth.example.com,https://auth-admin.example.com"
-        # First URL = main endpoint (port 3001), second = admin (port 3002)
-        LOGTO_MAIN=$$(echo "$$SERVICE_URL_LOGTO" | cut -d',' -f1 | tr -d ' ')
-        LOGTO_ADMIN=$$(echo "$$SERVICE_URL_LOGTO" | cut -d',' -f2 | tr -d ' ')
+        # Parse Coolify's SERVICE_FQDN_LOGTO (comma-separated, may include :port):
+        #   "https://auth.example.com:3001,https://auth-admin.example.com:3002"
+        # Strip trailing :port since public URLs use standard HTTPS (443).
+        LOGTO_MAIN=$$(echo "$$SERVICE_FQDN_LOGTO" | cut -d',' -f1 | sed 's/:[0-9]*$$//' | tr -d ' ')
+        LOGTO_ADMIN=$$(echo "$$SERVICE_FQDN_LOGTO" | cut -d',' -f2 | sed 's/:[0-9]*$$//' | tr -d ' ')
         export ENDPOINT="$${LOGTO_MAIN:-http://localhost:3001}"
         export ADMIN_ENDPOINT="$${LOGTO_ADMIN:-http://localhost:3002}"
         echo "Logto ENDPOINT=$$ENDPOINT  ADMIN_ENDPOINT=$$ADMIN_ENDPOINT"
