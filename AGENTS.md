@@ -36,11 +36,34 @@ Browser ──▶ nginx (web service)
 5. Go API validates JWT via JWKS endpoint (cached 1 hour)
 6. Admin role checked for write operations (POST endpoints)
 
-### Deployment Notes
+### Deployment (Coolify)
 
+**Domains** — set in Coolify's general tab per service (NOT env vars):
+- `web`: `https://nationcam.com`
+- `logto`: `https://auth.nationcam.com:3001,https://auth-admin.nationcam.com:3002`
+- `api`: `https://api.nationcam.com` (optional — frontend uses nginx proxy)
+
+Coolify auto-generates `SERVICE_URL_WEB`, `SERVICE_URL_LOGTO`, etc. The docker-compose references these directly.
+
+**Custom env vars** — only 4 needed:
+```
+POSTGRES_PASSWORD=<strong password>
+LOGTO_DB_PASSWORD=<strong password>
+LOGTO_APP_ID=<from Logto admin console>
+LOGTO_API_RESOURCE=https://api.nationcam.com
+```
+
+**First deploy steps:**
+1. Deploy with `LOGTO_APP_ID=` (empty)
+2. Open Logto admin console (`auth-admin.nationcam.com`)
+3. Create a "Single Page App" application, set redirect URI to `https://nationcam.com/callback`
+4. Create an API resource with identifier `https://api.nationcam.com`
+5. Copy the App ID → set `LOGTO_APP_ID` → redeploy
+
+**Technical notes:**
 - **Logto DB seeding**: The Logto container automatically seeds its database and deploys schema alterations on startup via the custom entrypoint. No manual setup needed.
+- **Logto endpoints**: The entrypoint parses `SERVICE_URL_LOGTO` (comma-separated) into `ENDPOINT` and `ADMIN_ENDPOINT` for Logto. The Go API always uses the hardcoded internal URL `http://logto:3001`.
 - **Go API DATABASE_URL**: Uses pgx key-value DSN format (`host=... password=...`) instead of URL format to avoid issues with special characters in passwords.
-- **LOGTO_ENDPOINT for API**: Hardcoded to `http://logto:3001` (internal Docker network). The public `LOGTO_ENDPOINT` env var is only used by the Logto container itself and the frontend build.
 
 ## Commands
 

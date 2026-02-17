@@ -4,14 +4,14 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-nationcam}
-      POSTGRES_USER: ${POSTGRES_USER:-nationcam}
+      POSTGRES_DB: nationcam
+      POSTGRES_USER: nationcam
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./docker/app-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nationcam}"]
+      test: ["CMD-SHELL", "pg_isready -U nationcam"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -46,6 +46,9 @@ services:
       retries: 5
 
   # ── Logto (OIDC Auth Server) ───────────────────────────────
+  # Domains set in Coolify general tab (not env vars):
+  #   https://auth.nationcam.com:3001,https://auth-admin.nationcam.com:3002
+  # Coolify auto-generates SERVICE_URL_LOGTO from those domains.
   logto:
     image: svhd/logto:latest
     restart: unless-stopped
@@ -53,6 +56,14 @@ services:
       - sh
       - -c
       - |
+        # Parse Coolify's SERVICE_URL_LOGTO (comma-separated):
+        #   "https://auth.example.com,https://auth-admin.example.com"
+        # First URL = main endpoint (port 3001), second = admin (port 3002)
+        LOGTO_MAIN=$$(echo "$$SERVICE_URL_LOGTO" | cut -d',' -f1 | tr -d ' ')
+        LOGTO_ADMIN=$$(echo "$$SERVICE_URL_LOGTO" | cut -d',' -f2 | tr -d ' ')
+        export ENDPOINT="$${LOGTO_MAIN:-http://localhost:3001}"
+        export ADMIN_ENDPOINT="$${LOGTO_ADMIN:-http://localhost:3002}"
+        echo "Logto ENDPOINT=$$ENDPOINT  ADMIN_ENDPOINT=$$ADMIN_ENDPOINT"
         npm run cli db seed -- --swe &&
         npm run cli db alteration deploy latest &&
         npm start
@@ -62,11 +73,9 @@ services:
     environment:
       TRUST_PROXY_HEADER: "1"
       DB_URL: postgres://logto:${LOGTO_DB_PASSWORD}@logto-db:5432/logto
-      ENDPOINT: ${LOGTO_ENDPOINT:-http://localhost:3301}
-      ADMIN_ENDPOINT: ${LOGTO_ADMIN_ENDPOINT:-http://localhost:3302}
     ports:
-      - "${LOGTO_PORT:-3301}:3001"
-      - "${LOGTO_ADMIN_PORT:-3302}:3002"
+      - "3001:3001"
+      - "3002:3002"
 
   # ── Go API ────────────────────────────────────────────────
   api:
@@ -80,25 +89,26 @@ services:
         condition: service_healthy
     environment:
       PORT: "8080"
-      DATABASE_URL: "host=postgres port=5432 user=${POSTGRES_USER:-nationcam} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB:-nationcam} sslmode=disable"
+      DATABASE_URL: "host=postgres port=5432 user=nationcam password=${POSTGRES_PASSWORD} dbname=nationcam sslmode=disable"
       REDIS_URL: redis://redis:6379/0
       LOGTO_ENDPOINT: http://logto:3001
       LOGTO_RESOURCE: ${LOGTO_API_RESOURCE:-https://api.nationcam.com}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      CORS_ORIGINS: ${SERVICE_URL_WEB:-http://localhost:3000}
 
   # ── Web (nginx + React SPA) ───────────────────────────────
+  # Domain set in Coolify general tab: https://nationcam.com
   web:
     build:
       context: ./web
       args:
-        VITE_LOGTO_ENDPOINT: ${LOGTO_ENDPOINT:-http://localhost:3301}
+        SERVICE_URL_LOGTO: ${SERVICE_URL_LOGTO:-http://localhost:3301}
         VITE_LOGTO_APP_ID: ${LOGTO_APP_ID:-}
         VITE_LOGTO_API_RESOURCE: ${LOGTO_API_RESOURCE:-https://api.nationcam.com}
     restart: unless-stopped
     depends_on:
       - api
     ports:
-      - "${APP_PORT:-3000}:80"
+      - "3000:80"
 
 volumes:
   pgdata:
