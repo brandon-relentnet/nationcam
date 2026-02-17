@@ -16,22 +16,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # ── Logto Database (PostgreSQL) ────────────────────────────
-  logto-db:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: logto
-      POSTGRES_USER: logto
-      POSTGRES_PASSWORD: ${LOGTO_DB_PASSWORD:?Set LOGTO_DB_PASSWORD}
-    volumes:
-      - logto-pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U logto"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
   # ── Redis ──────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
@@ -44,31 +28,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-
-  # ── Logto (OIDC Auth Server) ───────────────────────────────
-  # Domains set in Coolify general tab (not env vars):
-  #   https://auth.nationcam.com:3001,https://auth-admin.nationcam.com:3002
-  # ENDPOINT comes from Coolify's auto-generated SERVICE_URL_LOGTO.
-  # ADMIN_ENDPOINT requires a custom env var (LOGTO_ADMIN_URL) because
-  # Coolify only exposes the first domain via SERVICE_URL_*.
-  logto:
-    image: svhd/logto:latest
-    restart: unless-stopped
-    entrypoint:
-      - sh
-      - -c
-      - |
-        npm run cli db seed -- --swe &&
-        npm run cli db alteration deploy latest &&
-        npm start
-    depends_on:
-      logto-db:
-        condition: service_healthy
-    environment:
-      TRUST_PROXY_HEADER: "1"
-      DB_URL: postgres://logto:${LOGTO_DB_PASSWORD}@logto-db:5432/logto
-      ENDPOINT: ${SERVICE_URL_LOGTO:-http://localhost:3001}
-      ADMIN_ENDPOINT: ${SERVICE_URL_LOGTO:-http://localhost:3001}
 
   # ── Go API ────────────────────────────────────────────────
   api:
@@ -84,7 +43,7 @@ services:
       PORT: "8080"
       DATABASE_URL: "host=postgres port=5432 user=nationcam password=${POSTGRES_PASSWORD} dbname=nationcam sslmode=disable"
       REDIS_URL: redis://redis:6379/0
-      LOGTO_ENDPOINT: http://logto:3001
+      LOGTO_ENDPOINT: ${LOGTO_ENDPOINT:-https://auth.nationcam.com}
       LOGTO_RESOURCE: ${LOGTO_API_RESOURCE:-https://api.nationcam.com}
       CORS_ORIGINS: ${SERVICE_URL_WEB:-http://localhost:3000}
 
@@ -94,7 +53,7 @@ services:
     build:
       context: ./web
       args:
-        SERVICE_URL_LOGTO: ${SERVICE_URL_LOGTO:-http://localhost:3301}
+        VITE_LOGTO_ENDPOINT: ${LOGTO_ENDPOINT:-https://auth.nationcam.com}
         VITE_LOGTO_APP_ID: ${LOGTO_APP_ID:-}
         VITE_LOGTO_API_RESOURCE: ${LOGTO_API_RESOURCE:-https://api.nationcam.com}
     restart: unless-stopped
@@ -103,5 +62,4 @@ services:
 
 volumes:
   pgdata:
-  logto-pgdata:
   redisdata:
