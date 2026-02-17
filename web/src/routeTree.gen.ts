@@ -14,7 +14,7 @@ import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LocationsIndexRouteImport } from './routes/locations/index'
-import { Route as LocationsSlugRouteImport } from './routes/locations/$slug'
+import { Route as LocationsSlugIndexRouteImport } from './routes/locations/$slug.index'
 import { Route as LocationsSlugSublocationSlugRouteImport } from './routes/locations/$slug.$sublocationSlug'
 
 const ContactRoute = ContactRouteImport.update({
@@ -42,16 +42,16 @@ const LocationsIndexRoute = LocationsIndexRouteImport.update({
   path: '/locations/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LocationsSlugRoute = LocationsSlugRouteImport.update({
-  id: '/locations/$slug',
-  path: '/locations/$slug',
+const LocationsSlugIndexRoute = LocationsSlugIndexRouteImport.update({
+  id: '/locations/$slug/',
+  path: '/locations/$slug/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LocationsSlugSublocationSlugRoute =
   LocationsSlugSublocationSlugRouteImport.update({
-    id: '/$sublocationSlug',
-    path: '/$sublocationSlug',
-    getParentRoute: () => LocationsSlugRoute,
+    id: '/locations/$slug/$sublocationSlug',
+    path: '/locations/$slug/$sublocationSlug',
+    getParentRoute: () => rootRouteImport,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -59,18 +59,18 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/callback': typeof CallbackRoute
   '/contact': typeof ContactRoute
-  '/locations/$slug': typeof LocationsSlugRouteWithChildren
   '/locations/': typeof LocationsIndexRoute
   '/locations/$slug/$sublocationSlug': typeof LocationsSlugSublocationSlugRoute
+  '/locations/$slug/': typeof LocationsSlugIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/callback': typeof CallbackRoute
   '/contact': typeof ContactRoute
-  '/locations/$slug': typeof LocationsSlugRouteWithChildren
   '/locations': typeof LocationsIndexRoute
   '/locations/$slug/$sublocationSlug': typeof LocationsSlugSublocationSlugRoute
+  '/locations/$slug': typeof LocationsSlugIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -78,9 +78,9 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/callback': typeof CallbackRoute
   '/contact': typeof ContactRoute
-  '/locations/$slug': typeof LocationsSlugRouteWithChildren
   '/locations/': typeof LocationsIndexRoute
   '/locations/$slug/$sublocationSlug': typeof LocationsSlugSublocationSlugRoute
+  '/locations/$slug/': typeof LocationsSlugIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -89,27 +89,27 @@ export interface FileRouteTypes {
     | '/admin'
     | '/callback'
     | '/contact'
-    | '/locations/$slug'
     | '/locations/'
     | '/locations/$slug/$sublocationSlug'
+    | '/locations/$slug/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/callback'
     | '/contact'
-    | '/locations/$slug'
     | '/locations'
     | '/locations/$slug/$sublocationSlug'
+    | '/locations/$slug'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/callback'
     | '/contact'
-    | '/locations/$slug'
     | '/locations/'
     | '/locations/$slug/$sublocationSlug'
+    | '/locations/$slug/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -117,8 +117,9 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   CallbackRoute: typeof CallbackRoute
   ContactRoute: typeof ContactRoute
-  LocationsSlugRoute: typeof LocationsSlugRouteWithChildren
   LocationsIndexRoute: typeof LocationsIndexRoute
+  LocationsSlugSublocationSlugRoute: typeof LocationsSlugSublocationSlugRoute
+  LocationsSlugIndexRoute: typeof LocationsSlugIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -158,42 +159,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LocationsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/locations/$slug': {
-      id: '/locations/$slug'
+    '/locations/$slug/': {
+      id: '/locations/$slug/'
       path: '/locations/$slug'
-      fullPath: '/locations/$slug'
-      preLoaderRoute: typeof LocationsSlugRouteImport
+      fullPath: '/locations/$slug/'
+      preLoaderRoute: typeof LocationsSlugIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/locations/$slug/$sublocationSlug': {
       id: '/locations/$slug/$sublocationSlug'
-      path: '/$sublocationSlug'
+      path: '/locations/$slug/$sublocationSlug'
       fullPath: '/locations/$slug/$sublocationSlug'
       preLoaderRoute: typeof LocationsSlugSublocationSlugRouteImport
-      parentRoute: typeof LocationsSlugRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
-
-interface LocationsSlugRouteChildren {
-  LocationsSlugSublocationSlugRoute: typeof LocationsSlugSublocationSlugRoute
-}
-
-const LocationsSlugRouteChildren: LocationsSlugRouteChildren = {
-  LocationsSlugSublocationSlugRoute: LocationsSlugSublocationSlugRoute,
-}
-
-const LocationsSlugRouteWithChildren = LocationsSlugRoute._addFileChildren(
-  LocationsSlugRouteChildren,
-)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   CallbackRoute: CallbackRoute,
   ContactRoute: ContactRoute,
-  LocationsSlugRoute: LocationsSlugRouteWithChildren,
   LocationsIndexRoute: LocationsIndexRoute,
+  LocationsSlugSublocationSlugRoute: LocationsSlugSublocationSlugRoute,
+  LocationsSlugIndexRoute: LocationsSlugIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

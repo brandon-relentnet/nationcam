@@ -12,7 +12,7 @@ import AdvertisementLayout from '@/components/AdvertisementLayout'
 import StreamPlayer from '@/components/StreamPlayer'
 import Reveal from '@/components/Reveal'
 
-export const Route = createFileRoute('/locations/$slug')({
+export const Route = createFileRoute('/locations/$slug/')({
   component: StatePage,
 })
 
