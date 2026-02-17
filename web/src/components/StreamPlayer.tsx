@@ -1,5 +1,14 @@
 import Hls from 'hls.js'
-import { Maximize, Minimize, Pause, Play, Volume2, VolumeX } from 'lucide-react'
+import {
+  AlertTriangle,
+  Maximize,
+  Minimize,
+  Pause,
+  Play,
+  RefreshCw,
+  Volume2,
+  VolumeX,
+} from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import LiveBadge from '@/components/LiveBadge'
 
@@ -22,12 +31,25 @@ interface StreamPlayerProps {
   fluid?: boolean
 }
 
+/** How long to wait for MANIFEST_PARSED before declaring the stream dead. */
+const LOAD_TIMEOUT_MS = 15_000
+/** How many fatal HLS errors we tolerate before giving up. */
+const MAX_RETRIES = 3
+
 function detectType(src: string): string {
   if (src.includes('.m3u8')) return 'application/x-mpegURL'
   if (src.includes('.mpd')) return 'application/dash+xml'
   if (src.includes('.mp4')) return 'video/mp4'
   if (src.includes('.webm')) return 'video/webm'
   return ''
+}
+
+/**
+ * Route an HLS URL through the Go API stream proxy so that hls.js
+ * can fetch manifests and segments without CORS issues.
+ */
+function proxyHlsUrl(src: string): string {
+  return `/api/stream-proxy?url=${encodeURIComponent(src)}`
 }
 
 export default function StreamPlayer({
@@ -43,38 +65,96 @@ export default function StreamPlayer({
   const videoRef = useRef<HTMLVideoElement>(null)
   const hlsRef = useRef<Hls | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const retriesRef = useRef(0)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [playing, setPlaying] = useState(autoplay)
   const [isMuted, setIsMuted] = useState(muted)
   const [volume, setVolume] = useState(muted ? 0 : 0.8)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isError, setIsError] = useState(false)
 
   const resolvedType = type ?? detectType(src)
   const isHls = resolvedType === 'application/x-mpegURL'
 
-  // Initialize video source
+  /** Tear down any active HLS instance + timeout. */
+  const cleanup = useCallback(() => {
+    if (hlsRef.current) {
+      hlsRef.current.destroy()
+      hlsRef.current = null
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
+  }, [])
+
+  /** Full reset — clears error state, retries, and re-initialises. */
+  const retry = useCallback(() => {
+    retriesRef.current = 0
+    setIsError(false)
+    setIsLoading(true)
+    // Trigger re-init by toggling a dependency (src is stable so we use a key
+    // trick at the call-site level OR just re-set source on the video element).
+    cleanup()
+    const video = videoRef.current
+    if (video) {
+      video.classList.remove('stream-ready')
+      // Force the effect to re-run by re-setting src attribute.
+      video.removeAttribute('src')
+      video.load()
+    }
+    // We need to trigger the effect below — simplest way is a state toggle.
+    setRetryCounter((c) => c + 1)
+  }, [cleanup])
+
+  // Invisible counter just to re-trigger the init effect on retry.
+  const [retryCounter, setRetryCounter] = useState(0)
+
+  // ── Initialise video source ──
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
 
     setIsLoading(true)
+    setIsError(false)
     video.classList.remove('stream-ready')
+    retriesRef.current = 0
 
     const markReady = () => {
       setIsLoading(false)
-      // Small delay so the shimmer fade-out and video fade-in overlap nicely
+      setIsError(false)
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
       requestAnimationFrame(() => {
         video.classList.add('stream-ready')
       })
     }
 
+    const markError = () => {
+      cleanup()
+      setIsLoading(false)
+      setIsError(true)
+    }
+
+    // Start a loading timeout — if we don't get MANIFEST_PARSED in time, error.
+    timeoutRef.current = setTimeout(() => {
+      if (!video.classList.contains('stream-ready')) {
+        console.warn('[StreamPlayer] load timeout for', src)
+        markError()
+      }
+    }, LOAD_TIMEOUT_MS)
+
     if (isHls && Hls.isSupported()) {
+      const proxiedSrc = proxyHlsUrl(src)
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
       })
-      hls.loadSource(src)
+      hls.loadSource(proxiedSrc)
       hls.attachMedia(video)
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         markReady()
@@ -86,45 +166,66 @@ export default function StreamPlayer({
       })
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (data.fatal) {
+          retriesRef.current++
+          console.warn(
+            `[StreamPlayer] fatal HLS error (${retriesRef.current}/${MAX_RETRIES})`,
+            data.type,
+            data.details,
+          )
+          if (retriesRef.current >= MAX_RETRIES) {
+            markError()
+            return
+          }
           if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
             hls.startLoad()
           } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
             hls.recoverMediaError()
+          } else {
+            markError()
           }
         }
       })
       hlsRef.current = hls
 
-      return () => {
-        hls.destroy()
-        hlsRef.current = null
-      }
+      return cleanup
     } else if (isHls && video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Safari native HLS
-      video.src = src
-      video.addEventListener('loadedmetadata', () => {
+      // Safari native HLS — proxy not needed, Safari handles CORS for media.
+      // But use it anyway for consistency — it doesn't hurt.
+      video.src = proxyHlsUrl(src)
+      const onMeta = () => {
         markReady()
         if (autoplay) video.play().catch(() => {})
-      })
+      }
+      const onError = () => markError()
+      video.addEventListener('loadedmetadata', onMeta)
+      video.addEventListener('error', onError)
+      return () => {
+        video.removeEventListener('loadedmetadata', onMeta)
+        video.removeEventListener('error', onError)
+        cleanup()
+      }
     } else {
-      // Native playback (MP4, WebM, etc.)
+      // Native playback (MP4, WebM, etc.) — no proxy needed.
       video.src = src
-      video.addEventListener('loadeddata', () => {
+      const onData = () => {
         markReady()
         if (autoplay) video.play().catch(() => {})
-      })
+      }
+      const onError = () => markError()
+      video.addEventListener('loadeddata', onData)
+      video.addEventListener('error', onError)
+      return () => {
+        video.removeEventListener('loadeddata', onData)
+        video.removeEventListener('error', onError)
+        cleanup()
+      }
     }
+  }, [src, isHls, autoplay, cleanup, retryCounter])
 
-    return () => {
-      if (hlsRef.current) hlsRef.current.destroy()
-    }
-  }, [src, isHls, autoplay])
-
-  // Sync playing state with video element events
+  // ── Sync playing state ──
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
-
     const onPlay = () => setPlaying(true)
     const onPause = () => setPlaying(false)
     video.addEventListener('play', onPlay)
@@ -178,7 +279,6 @@ export default function StreamPlayer({
     }
   }, [])
 
-  // Listen for fullscreen changes (e.g. Escape key)
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement)
     document.addEventListener('fullscreenchange', handler)
@@ -197,22 +297,38 @@ export default function StreamPlayer({
         className="h-full w-full object-cover"
       />
 
-      {/* Loading shimmer — crossfades out as video fades in */}
-      <div
-        className="absolute inset-0 flex items-center justify-center bg-crust transition-opacity duration-500"
-        style={{ opacity: isLoading ? 1 : 0, pointerEvents: isLoading ? 'auto' : 'none' }}
-      >
-        <div
-          className="h-full w-full bg-gradient-to-r from-crust via-surface0 to-crust bg-[length:200%_100%]"
-          style={{ animation: 'shimmer 1.5s ease-in-out infinite' }}
-        />
-      </div>
+      {/* Loading shimmer */}
+      {isLoading && !isError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-crust">
+          <div
+            className="h-full w-full bg-gradient-to-r from-crust via-surface0 to-crust bg-[length:200%_100%]"
+            style={{ animation: 'shimmer 1.5s ease-in-out infinite' }}
+          />
+        </div>
+      )}
+
+      {/* Error state */}
+      {isError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-crust">
+          <AlertTriangle size={28} className="text-overlay1" />
+          <p className="mb-0 font-mono text-xs text-subtext0">
+            Stream unavailable
+          </p>
+          <button
+            onClick={retry}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-overlay0 bg-surface0 px-3 py-1.5 font-mono text-xs text-subtext1 transition-colors hover:border-accent/40 hover:text-accent"
+          >
+            <RefreshCw size={12} />
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* LIVE badge */}
       {live && <LiveBadge className="absolute top-3 left-3 z-10" />}
 
       {/* Custom controls */}
-      {controls && (
+      {controls && !isError && (
         <div className="stream-controls">
           <button onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'}>
             {playing ? <Pause size={16} /> : <Play size={16} />}

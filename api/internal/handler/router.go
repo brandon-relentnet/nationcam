@@ -34,5 +34,8 @@ func NewRouter(pool *pgxpool.Pool, c *cache.Cache, auth *mw.Auth, corsOrigins []
 	r.Get("/videos", ListVideos(pool, c))
 	r.With(mw.RequireAdmin).Post("/videos", CreateVideo(pool, c))
 
+	// Stream proxy — proxies external HLS manifests/segments to bypass CORS.
+	r.Get("/stream-proxy", StreamProxy())
+
 	return r
 }
