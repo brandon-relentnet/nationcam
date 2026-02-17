@@ -31,6 +31,16 @@ LEFT JOIN sublocations sub ON sub.sublocation_id = v.sublocation_id
 WHERE v.sublocation_id = $1 AND v.status = 'active'
 ORDER BY v.title;
 
+-- name: GetVideoByID :one
+SELECT v.video_id, v.title, v.src, v.type, v.state_id, v.sublocation_id,
+       v.status, v.created_by, v.created_at, v.updated_at,
+       s.name AS state_name,
+       COALESCE(sub.name, '') AS sublocation_name
+FROM videos v
+JOIN states s ON s.state_id = v.state_id
+LEFT JOIN sublocations sub ON sub.sublocation_id = v.sublocation_id
+WHERE v.video_id = $1;
+
 -- name: CreateVideo :one
 INSERT INTO videos (title, src, type, state_id, sublocation_id, status, created_by)
 VALUES ($1, $2, $3, $4, $5, $6, $7)

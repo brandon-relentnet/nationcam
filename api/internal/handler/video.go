@@ -92,7 +92,7 @@ func CreateVideo(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
 			req.Status = "active"
 		}
 
-		row, err := db.New(pool).CreateVideo(r.Context(), db.CreateVideoParams{
+		created, err := db.New(pool).CreateVideo(r.Context(), db.CreateVideoParams{
 			Title:         req.Title,
 			Src:           req.Src,
 			Type:          req.Type,
@@ -101,6 +101,13 @@ func CreateVideo(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
 			Status:        req.Status,
 			CreatedBy:     middleware.UserID(r.Context()),
 		})
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		// Re-fetch with JOINs to return the rich type (includes state_name, sublocation_name).
+		row, err := db.New(pool).GetVideoByID(r.Context(), created.VideoID)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return

@@ -58,10 +58,17 @@ func CreateState(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
 			return
 		}
 
-		row, err := db.New(pool).CreateState(r.Context(), db.CreateStateParams{
+		created, err := db.New(pool).CreateState(r.Context(), db.CreateStateParams{
 			Name:        req.Name,
 			Description: req.Description,
 		})
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		// Re-fetch with JOINs to return the rich type (includes video_count).
+		row, err := db.New(pool).GetStateByID(r.Context(), created.StateID)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return

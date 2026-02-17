@@ -37,6 +37,47 @@ func (q *Queries) CreateSublocation(ctx context.Context, arg CreateSublocationPa
 	return i, err
 }
 
+const getSublocationByID = `-- name: GetSublocationByID :one
+SELECT sub.sublocation_id, sub.name, sub.description, sub.state_id, sub.slug,
+       sub.created_at, sub.updated_at,
+       s.name AS state_name,
+       COUNT(v.video_id)::int AS video_count
+FROM sublocations sub
+JOIN states s ON s.state_id = sub.state_id
+LEFT JOIN videos v ON v.sublocation_id = sub.sublocation_id AND v.status = 'active'
+WHERE sub.sublocation_id = $1
+GROUP BY sub.sublocation_id, s.name
+`
+
+type GetSublocationByIDRow struct {
+	SublocationID int32     `json:"sublocation_id"`
+	Name          string    `json:"name"`
+	Description   string    `json:"description"`
+	StateID       int32     `json:"state_id"`
+	Slug          string    `json:"slug"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	StateName     string    `json:"state_name"`
+	VideoCount    int32     `json:"video_count"`
+}
+
+func (q *Queries) GetSublocationByID(ctx context.Context, sublocationID int32) (GetSublocationByIDRow, error) {
+	row := q.db.QueryRow(ctx, getSublocationByID, sublocationID)
+	var i GetSublocationByIDRow
+	err := row.Scan(
+		&i.SublocationID,
+		&i.Name,
+		&i.Description,
+		&i.StateID,
+		&i.Slug,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.StateName,
+		&i.VideoCount,
+	)
+	return i, err
+}
+
 const getSublocationBySlug = `-- name: GetSublocationBySlug :one
 SELECT sub.sublocation_id, sub.name, sub.description, sub.state_id, sub.slug,
        sub.created_at, sub.updated_at,

@@ -70,11 +70,18 @@ func CreateSublocation(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
 			return
 		}
 
-		row, err := db.New(pool).CreateSublocation(r.Context(), db.CreateSublocationParams{
+		created, err := db.New(pool).CreateSublocation(r.Context(), db.CreateSublocationParams{
 			Name:        req.Name,
 			Description: req.Description,
 			StateID:     req.StateID,
 		})
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		// Re-fetch with JOINs to return the rich type (includes state_name, video_count).
+		row, err := db.New(pool).GetSublocationByID(r.Context(), created.SublocationID)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return

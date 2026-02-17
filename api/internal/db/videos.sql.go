@@ -52,6 +52,52 @@ func (q *Queries) CreateVideo(ctx context.Context, arg CreateVideoParams) (Video
 	return i, err
 }
 
+const getVideoByID = `-- name: GetVideoByID :one
+SELECT v.video_id, v.title, v.src, v.type, v.state_id, v.sublocation_id,
+       v.status, v.created_by, v.created_at, v.updated_at,
+       s.name AS state_name,
+       COALESCE(sub.name, '') AS sublocation_name
+FROM videos v
+JOIN states s ON s.state_id = v.state_id
+LEFT JOIN sublocations sub ON sub.sublocation_id = v.sublocation_id
+WHERE v.video_id = $1
+`
+
+type GetVideoByIDRow struct {
+	VideoID         int32     `json:"video_id"`
+	Title           string    `json:"title"`
+	Src             string    `json:"src"`
+	Type            string    `json:"type"`
+	StateID         int32     `json:"state_id"`
+	SublocationID   *int32    `json:"sublocation_id"`
+	Status          string    `json:"status"`
+	CreatedBy       string    `json:"created_by"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	StateName       string    `json:"state_name"`
+	SublocationName string    `json:"sublocation_name"`
+}
+
+func (q *Queries) GetVideoByID(ctx context.Context, videoID int32) (GetVideoByIDRow, error) {
+	row := q.db.QueryRow(ctx, getVideoByID, videoID)
+	var i GetVideoByIDRow
+	err := row.Scan(
+		&i.VideoID,
+		&i.Title,
+		&i.Src,
+		&i.Type,
+		&i.StateID,
+		&i.SublocationID,
+		&i.Status,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.StateName,
+		&i.SublocationName,
+	)
+	return i, err
+}
+
 const listVideos = `-- name: ListVideos :many
 SELECT v.video_id, v.title, v.src, v.type, v.state_id, v.sublocation_id,
        v.status, v.created_by, v.created_at, v.updated_at,
