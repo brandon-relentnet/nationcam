@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { Video } from 'lucide-react'
+import { MapPin, Radio, Video } from 'lucide-react'
 import type { State, Sublocation, Video as VideoType } from '@/lib/types'
 import {
   fetchStateBySlug,
@@ -80,12 +80,6 @@ function StatePage() {
     )
   }
 
-  // Group videos by sublocation
-  const sublocationVideos = sublocations.map((sub) => ({
-    sublocation: sub,
-    videos: videos.filter((v) => v.sublocation_id === sub.sublocation_id),
-  }))
-
   const uncategorizedVideos = videos.filter((v) => !v.sublocation_id)
 
   return (
@@ -94,35 +88,33 @@ function StatePage() {
 
       <div className="page-container">
         <AdvertisementLayout>
-          {sublocationVideos.map(({ sublocation, videos: subVideos }) =>
-            subVideos.length > 0 ? (
-              <Reveal key={sublocation.sublocation_id} variant="float">
-                <section className="mb-14">
-                  <Link
-                    to="/locations/$slug/$sublocationSlug"
-                    params={{
-                      slug,
-                      sublocationSlug: sublocation.slug,
-                    }}
-                    className="group inline-flex items-center gap-2 transition-colors hover:text-accent"
-                  >
-                    <h3>{sublocation.name}</h3>
-                    <span className="font-mono text-sm text-subtext0 opacity-0 transition-opacity group-hover:opacity-100">
-                      View all &rarr;
-                    </span>
-                  </Link>
-                  <Reveal stagger>
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                      {subVideos.map((video) => (
-                        <VideoCard key={video.video_id} video={video} />
-                      ))}
-                    </div>
-                  </Reveal>
-                </section>
-              </Reveal>
-            ) : null,
+          {/* Sublocation card grid */}
+          {sublocations.length > 0 && (
+            <Reveal variant="blur">
+              <section className="mb-14">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-4 py-1.5">
+                  <MapPin size={14} className="text-accent" />
+                  <span className="font-mono text-xs font-medium text-accent">
+                    Browse by location
+                  </span>
+                </div>
+                <h3>Locations in {state.name}</h3>
+                <Reveal stagger>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {sublocations.map((sub) => (
+                      <SublocationCard
+                        key={sub.sublocation_id}
+                        sublocation={sub}
+                        slug={slug}
+                      />
+                    ))}
+                  </div>
+                </Reveal>
+              </section>
+            </Reveal>
           )}
 
+          {/* Uncategorized videos (not assigned to any sublocation) */}
           {uncategorizedVideos.length > 0 && (
             <Reveal variant="float">
               <section className="mb-14">
@@ -138,7 +130,8 @@ function StatePage() {
             </Reveal>
           )}
 
-          {videos.length === 0 && (
+          {/* Empty state — no sublocations and no videos */}
+          {sublocations.length === 0 && videos.length === 0 && (
             <Reveal variant="scale">
               <div className="section-container py-12 text-center">
                 <Video size={32} className="mx-auto mb-4 text-overlay1" />
@@ -151,6 +144,49 @@ function StatePage() {
         </AdvertisementLayout>
       </div>
     </div>
+  )
+}
+
+/* ──── Sublocation Card ──── */
+
+function SublocationCard({
+  sublocation,
+  slug,
+}: {
+  sublocation: Sublocation
+  slug: string
+}) {
+  return (
+    <Link
+      to="/locations/$slug/$sublocationSlug"
+      params={{ slug, sublocationSlug: sublocation.slug }}
+      className="reveal-float group block rounded-xl border border-overlay0 bg-surface0 p-6 shadow-lg transition-all duration-350 ease-[var(--spring-snappy)] hover:scale-[1.01] hover:border-accent/40 hover:shadow-xl"
+    >
+      <div className="flex items-start justify-between">
+        <div>
+          <h4 className="mb-1 transition-colors group-hover:text-accent">
+            {sublocation.name}
+          </h4>
+          {sublocation.video_count && sublocation.video_count > 0 ? (
+            <div className="flex items-center gap-1.5">
+              <Radio size={12} className="text-live" />
+              <span className="font-mono text-sm text-subtext0">
+                {sublocation.video_count} camera
+                {sublocation.video_count > 1 ? 's' : ''}
+              </span>
+            </div>
+          ) : (
+            <span className="font-mono text-sm text-overlay2">
+              Coming soon
+            </span>
+          )}
+        </div>
+        <MapPin
+          size={20}
+          className="shrink-0 text-overlay1 transition-colors group-hover:text-accent"
+        />
+      </div>
+    </Link>
   )
 }
 
