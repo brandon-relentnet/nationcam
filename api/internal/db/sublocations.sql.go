@@ -182,3 +182,87 @@ func (q *Queries) ListSublocationsByState(ctx context.Context, stateID int32) ([
 	}
 	return items, nil
 }
+
+const listSublocationsPaginated = `-- name: ListSublocationsPaginated :many
+SELECT sub.sublocation_id, sub.name, sub.description, sub.state_id, sub.slug,
+       sub.created_at, sub.updated_at,
+       s.name AS state_name,
+       COUNT(v.video_id)::int AS video_count,
+       COUNT(*) OVER()::int AS total_count
+FROM sublocations sub
+JOIN states s ON s.state_id = sub.state_id
+LEFT JOIN videos v ON v.sublocation_id = sub.sublocation_id AND v.status = 'active'
+GROUP BY sub.sublocation_id, s.name
+ORDER BY sub.name
+LIMIT $1 OFFSET $2
+`
+
+type ListSublocationsPaginatedParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListSublocationsPaginatedRow struct {
+	SublocationID int32     `json:"sublocation_id"`
+	Name          string    `json:"name"`
+	Description   string    `json:"description"`
+	StateID       int32     `json:"state_id"`
+	Slug          string    `json:"slug"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	StateName     string    `json:"state_name"`
+	VideoCount    int32     `json:"video_count"`
+	TotalCount    int32     `json:"total_count"`
+}
+
+func (q *Queries) ListSublocationsPaginated(ctx context.Context, arg ListSublocationsPaginatedParams) ([]ListSublocationsPaginatedRow, error) {
+	rows, err := q.db.Query(ctx, listSublocationsPaginated, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSublocationsPaginatedRow{}
+	for rows.Next() {
+		var i ListSublocationsPaginatedRow
+		if err := rows.Scan(
+			&i.SublocationID,
+			&i.Name,
+			&i.Description,
+			&i.StateID,
+			&i.Slug,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.StateName,
+			&i.VideoCount,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateSublocation = `-- name: UpdateSublocation :exec
+UPDATE sublocations SET name = $2, description = $3, state_id = $4 WHERE sublocation_id = $1
+`
+
+type UpdateSublocationParams struct {
+	SublocationID int32  `json:"sublocation_id"`
+	Name          string `json:"name"`
+	Description   string `json:"description"`
+	StateID       int32  `json:"state_id"`
+}
+
+func (q *Queries) UpdateSublocation(ctx context.Context, arg UpdateSublocationParams) error {
+	_, err := q.db.Exec(ctx, updateSublocation,
+		arg.SublocationID,
+		arg.Name,
+		arg.Description,
+		arg.StateID,
+	)
+	return err
+}

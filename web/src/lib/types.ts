@@ -40,7 +40,18 @@ export interface CreateStateInput {
   description?: string
 }
 
+export interface UpdateStateInput {
+  name: string
+  description?: string
+}
+
 export interface CreateSublocationInput {
+  name: string
+  description?: string
+  state_id: number
+}
+
+export interface UpdateSublocationInput {
   name: string
   description?: string
   state_id: number
@@ -53,4 +64,20 @@ export interface CreateVideoInput {
   state_id: number
   sublocation_id?: number | null
   status?: string
+}
+
+export interface UpdateVideoInput {
+  title: string
+  src: string
+  type: string
+  state_id: number
+  sublocation_id?: number | null
+  status?: string
+}
+
+export interface PaginatedResponse<T> {
+  data: Array<T>
+  total: number
+  page: number
+  per_page: number
 }

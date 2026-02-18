@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -66,10 +67,97 @@ func DeleteSublocation(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
 			return
 		}
 
-		_ = c.Invalidate(r.Context(), "sublocations:*")
-		_ = c.Invalidate(r.Context(), "videos:*")
-		_ = c.Invalidate(r.Context(), "states:*")
+		if err := c.Invalidate(r.Context(), "sublocations:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "sublocations:*", "error", err)
+		}
+		if err := c.Invalidate(r.Context(), "videos:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "videos:*", "error", err)
+		}
+		if err := c.Invalidate(r.Context(), "states:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "states:*", "error", err)
+		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// ListSublocationsPaginated handles GET /sublocations?page=1&per_page=20 — paginated list.
+func ListSublocationsPaginated(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		limit, offset, page, perPage := parsePagination(r)
+
+		rows, err := db.New(pool).ListSublocationsPaginated(r.Context(), db.ListSublocationsPaginatedParams{
+			Limit:  limit,
+			Offset: offset,
+		})
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		var total int32
+		if len(rows) > 0 {
+			total = rows[0].TotalCount
+		}
+
+		writeJSON(w, http.StatusOK, paginatedResponse{
+			Data:    rows,
+			Total:   total,
+			Page:    page,
+			PerPage: perPage,
+		})
+	}
+}
+
+type updateSublocationRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	StateID     int32  `json:"state_id"`
+}
+
+// UpdateSublocation handles PUT /sublocations/{id} — updates a sublocation (admin only).
+func UpdateSublocation(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idStr := chi.URLParam(r, "id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id <= 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid sublocation id"})
+			return
+		}
+
+		var req updateSublocationRequest
+		if err := readJSON(r, &req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+			return
+		}
+		if req.Name == "" || req.StateID == 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name and state_id are required"})
+			return
+		}
+
+		if err := db.New(pool).UpdateSublocation(r.Context(), db.UpdateSublocationParams{
+			SublocationID: int32(id),
+			Name:          req.Name,
+			Description:   req.Description,
+			StateID:       req.StateID,
+		}); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		// Re-fetch to return the updated rich type.
+		row, err := db.New(pool).GetSublocationByID(r.Context(), int32(id))
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		if err := c.Invalidate(r.Context(), "sublocations:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "sublocations:*", "error", err)
+		}
+		if err := c.Invalidate(r.Context(), "states:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "states:*", "error", err)
+		}
+		writeJSON(w, http.StatusOK, row)
 	}
 }
 
@@ -109,7 +197,12 @@ func CreateSublocation(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
 			return
 		}
 
-		_ = c.Invalidate(r.Context(), "sublocations:*")
+		if err := c.Invalidate(r.Context(), "sublocations:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "sublocations:*", "error", err)
+		}
+		if err := c.Invalidate(r.Context(), "states:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "states:*", "error", err)
+		}
 		writeJSON(w, http.StatusCreated, row)
 	}
 }

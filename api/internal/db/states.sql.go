@@ -158,3 +158,74 @@ func (q *Queries) ListStates(ctx context.Context) ([]ListStatesRow, error) {
 	}
 	return items, nil
 }
+
+const listStatesPaginated = `-- name: ListStatesPaginated :many
+SELECT s.state_id, s.name, s.description, s.slug, s.created_at, s.updated_at,
+       COUNT(v.video_id)::int AS video_count,
+       COUNT(*) OVER()::int AS total_count
+FROM states s
+LEFT JOIN videos v ON v.state_id = s.state_id AND v.status = 'active'
+GROUP BY s.state_id
+ORDER BY s.name
+LIMIT $1 OFFSET $2
+`
+
+type ListStatesPaginatedParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListStatesPaginatedRow struct {
+	StateID     int32     `json:"state_id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Slug        string    `json:"slug"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	VideoCount  int32     `json:"video_count"`
+	TotalCount  int32     `json:"total_count"`
+}
+
+func (q *Queries) ListStatesPaginated(ctx context.Context, arg ListStatesPaginatedParams) ([]ListStatesPaginatedRow, error) {
+	rows, err := q.db.Query(ctx, listStatesPaginated, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListStatesPaginatedRow{}
+	for rows.Next() {
+		var i ListStatesPaginatedRow
+		if err := rows.Scan(
+			&i.StateID,
+			&i.Name,
+			&i.Description,
+			&i.Slug,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.VideoCount,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateState = `-- name: UpdateState :exec
+UPDATE states SET name = $2, description = $3 WHERE state_id = $1
+`
+
+type UpdateStateParams struct {
+	StateID     int32  `json:"state_id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+func (q *Queries) UpdateState(ctx context.Context, arg UpdateStateParams) error {
+	_, err := q.db.Exec(ctx, updateState, arg.StateID, arg.Name, arg.Description)
+	return err
+}

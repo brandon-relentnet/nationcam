@@ -1,4 +1,3 @@
-import Hls from 'hls.js'
 import {
   AlertTriangle,
   Maximize,
@@ -10,6 +9,7 @@ import {
   VolumeX,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type HlsType from 'hls.js'
 import LiveBadge from '@/components/LiveBadge'
 
 interface StreamPlayerProps {
@@ -63,7 +63,7 @@ export default function StreamPlayer({
   fluid = true,
 }: StreamPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const hlsRef = useRef<Hls | null>(null)
+  const hlsRef = useRef<HlsType | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const retriesRef = useRef(0)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -148,60 +148,62 @@ export default function StreamPlayer({
       }
     }, LOAD_TIMEOUT_MS)
 
-    if (isHls && Hls.isSupported()) {
-      const proxiedSrc = proxyHlsUrl(src)
-      const hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: true,
-      })
-      hls.loadSource(proxiedSrc)
-      hls.attachMedia(video)
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        markReady()
-        if (autoplay) {
-          video.play().catch(() => {
-            /* browser may block autoplay */
-          })
-        }
-      })
-      hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (data.fatal) {
-          retriesRef.current++
-          console.warn(
-            `[StreamPlayer] fatal HLS error (${retriesRef.current}/${MAX_RETRIES})`,
-            data.type,
-            data.details,
-          )
-          if (retriesRef.current >= MAX_RETRIES) {
-            markError()
-            return
-          }
-          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-            hls.startLoad()
-          } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-            hls.recoverMediaError()
-          } else {
-            markError()
-          }
-        }
-      })
-      hlsRef.current = hls
+    if (isHls) {
+      // Dynamically import hls.js — it's ~300KB and only needed for HLS streams.
+      let cancelled = false
+      import('hls.js').then(({ default: Hls }) => {
+        if (cancelled) return
 
-      return cleanup
-    } else if (isHls && video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Safari native HLS — proxy not needed, Safari handles CORS for media.
-      // But use it anyway for consistency — it doesn't hurt.
-      video.src = proxyHlsUrl(src)
-      const onMeta = () => {
-        markReady()
-        if (autoplay) video.play().catch(() => {})
-      }
-      const onError = () => markError()
-      video.addEventListener('loadedmetadata', onMeta)
-      video.addEventListener('error', onError)
+        if (Hls.isSupported()) {
+          const proxiedSrc = proxyHlsUrl(src)
+          const hls = new Hls({
+            enableWorker: true,
+            lowLatencyMode: true,
+          })
+          hls.loadSource(proxiedSrc)
+          hls.attachMedia(video)
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            markReady()
+            if (autoplay) {
+              video.play().catch(() => {
+                /* browser may block autoplay */
+              })
+            }
+          })
+          hls.on(Hls.Events.ERROR, (_event, data) => {
+            if (data.fatal) {
+              retriesRef.current++
+              console.warn(
+                `[StreamPlayer] fatal HLS error (${retriesRef.current}/${MAX_RETRIES})`,
+                data.type,
+                data.details,
+              )
+              if (retriesRef.current >= MAX_RETRIES) {
+                markError()
+                return
+              }
+              if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                hls.startLoad()
+              } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                hls.recoverMediaError()
+              } else {
+                markError()
+              }
+            }
+          })
+          hlsRef.current = hls
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          // Safari native HLS
+          video.src = proxyHlsUrl(src)
+          video.addEventListener('loadedmetadata', markReady)
+          video.addEventListener('error', markError)
+        } else {
+          markError()
+        }
+      })
+
       return () => {
-        video.removeEventListener('loadedmetadata', onMeta)
-        video.removeEventListener('error', onError)
+        cancelled = true
         cleanup()
       }
     } else {

@@ -23,18 +23,24 @@ func NewRouter(pool *pgxpool.Pool, c *cache.Cache, auth *mw.Auth, corsOrigins []
 	r.Get("/states", ListStates(pool, c))
 	r.Get("/states/{slug}", GetState(pool, c))
 	r.With(mw.RequireAdmin).Post("/states", CreateState(pool, c))
+	r.With(mw.RequireAdmin).Put("/states/{id}", UpdateState(pool, c))
 	r.With(mw.RequireAdmin).Delete("/states/{slug}", DeleteState(pool, c))
+	r.With(mw.RequireAdmin).Get("/states/paginated", ListStatesPaginated(pool, c))
 
 	// Sublocations.
 	r.Get("/states/{slug}/sublocations", ListSublocationsByState(pool, c))
 	r.Get("/sublocations/{slug}", GetSublocation(pool, c))
 	r.With(mw.RequireAdmin).Post("/sublocations", CreateSublocation(pool, c))
+	r.With(mw.RequireAdmin).Put("/sublocations/{id}", UpdateSublocation(pool, c))
 	r.With(mw.RequireAdmin).Delete("/sublocations/{id}", DeleteSublocation(pool, c))
+	r.With(mw.RequireAdmin).Get("/sublocations/paginated", ListSublocationsPaginated(pool, c))
 
 	// Videos.
 	r.Get("/videos", ListVideos(pool, c))
 	r.With(mw.RequireAdmin).Post("/videos", CreateVideo(pool, c))
+	r.With(mw.RequireAdmin).Put("/videos/{id}", UpdateVideo(pool, c))
 	r.With(mw.RequireAdmin).Delete("/videos/{id}", DeleteVideo(pool, c))
+	r.With(mw.RequireAdmin).Get("/videos/paginated", ListVideosPaginated(pool, c))
 
 	// Stream proxy — proxies external HLS manifests/segments to bypass CORS.
 	r.Get("/stream-proxy", StreamProxy())

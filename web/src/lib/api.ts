@@ -2,8 +2,12 @@ import type {
   CreateStateInput,
   CreateSublocationInput,
   CreateVideoInput,
+  PaginatedResponse,
   State,
   Sublocation,
+  UpdateStateInput,
+  UpdateSublocationInput,
+  UpdateVideoInput,
   Video,
 } from '@/lib/types'
 
@@ -46,6 +50,31 @@ async function post<T>(
   return res.json() as Promise<T>
 }
 
+async function put<T>(
+  path: string,
+  body: unknown,
+  token?: string | null,
+): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`PUT ${path} failed: ${res.status} ${text}`)
+  }
+  return res.json() as Promise<T>
+}
+
 async function del(path: string, token?: string | null): Promise<void> {
   const headers: Record<string, string> = {}
   if (token) {
@@ -60,6 +89,24 @@ async function del(path: string, token?: string | null): Promise<void> {
     const text = await res.text()
     throw new Error(`DELETE ${path} failed: ${res.status} ${text}`)
   }
+}
+
+async function authedGet<T>(
+  path: string,
+  token?: string | null,
+): Promise<T> {
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+  }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, { headers })
+  if (!res.ok) {
+    throw new Error(`GET ${path} failed: ${res.status} ${res.statusText}`)
+  }
+  return res.json() as Promise<T>
 }
 
 /* ──── States ──── */
@@ -86,11 +133,37 @@ export async function createState(
   )
 }
 
+export async function updateState(
+  id: number,
+  input: UpdateStateInput,
+  token?: string | null,
+): Promise<State> {
+  return put<State>(
+    `/states/${id}`,
+    {
+      name: input.name,
+      description: input.description ?? '',
+    },
+    token,
+  )
+}
+
 export async function deleteState(
   slug: string,
   token?: string | null,
 ): Promise<void> {
   return del(`/states/${slug}`, token)
+}
+
+export async function fetchStatesPaginated(
+  page: number,
+  perPage: number,
+  token?: string | null,
+): Promise<PaginatedResponse<State>> {
+  return authedGet<PaginatedResponse<State>>(
+    `/states/paginated?page=${page}&per_page=${perPage}`,
+    token,
+  )
 }
 
 /* ──── Sublocations ──── */
@@ -122,11 +195,38 @@ export async function createSublocation(
   )
 }
 
+export async function updateSublocation(
+  id: number,
+  input: UpdateSublocationInput,
+  token?: string | null,
+): Promise<Sublocation> {
+  return put<Sublocation>(
+    `/sublocations/${id}`,
+    {
+      name: input.name,
+      description: input.description ?? '',
+      state_id: input.state_id,
+    },
+    token,
+  )
+}
+
 export async function deleteSublocation(
   id: number,
   token?: string | null,
 ): Promise<void> {
   return del(`/sublocations/${id}`, token)
+}
+
+export async function fetchSublocationsPaginated(
+  page: number,
+  perPage: number,
+  token?: string | null,
+): Promise<PaginatedResponse<Sublocation>> {
+  return authedGet<PaginatedResponse<Sublocation>>(
+    `/sublocations/paginated?page=${page}&per_page=${perPage}`,
+    token,
+  )
 }
 
 /* ──── Videos ──── */
@@ -168,6 +268,36 @@ export async function createVideo(
       sublocation_id: input.sublocation_id ?? null,
       status: input.status ?? 'active',
     },
+    token,
+  )
+}
+
+export async function updateVideo(
+  id: number,
+  input: UpdateVideoInput,
+  token?: string | null,
+): Promise<Video> {
+  return put<Video>(
+    `/videos/${id}`,
+    {
+      title: input.title,
+      src: input.src,
+      type: input.type,
+      state_id: input.state_id,
+      sublocation_id: input.sublocation_id ?? null,
+      status: input.status ?? 'active',
+    },
+    token,
+  )
+}
+
+export async function fetchVideosPaginated(
+  page: number,
+  perPage: number,
+  token?: string | null,
+): Promise<PaginatedResponse<Video>> {
+  return authedGet<PaginatedResponse<Video>>(
+    `/videos/paginated?page=${page}&per_page=${perPage}`,
     token,
   )
 }

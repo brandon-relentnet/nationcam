@@ -22,12 +22,12 @@ const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/dashboard.lazy').then((d) => d.Route))
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/contact.lazy').then((d) => d.Route))
 const CallbackRoute = CallbackRouteImport.update({
   id: '/callback',
   path: '/callback',
@@ -37,7 +37,7 @@ const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/admin.lazy').then((d) => d.Route))
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -52,13 +52,19 @@ const LocationsSlugIndexRoute = LocationsSlugIndexRouteImport.update({
   id: '/locations/$slug/',
   path: '/locations/$slug/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() =>
+  import('./routes/locations/$slug.index.lazy').then((d) => d.Route),
+)
 const LocationsSlugSublocationSlugRoute =
   LocationsSlugSublocationSlugRouteImport.update({
     id: '/locations/$slug/$sublocationSlug',
     path: '/locations/$slug/$sublocationSlug',
     getParentRoute: () => rootRouteImport,
-  } as any)
+  } as any).lazy(() =>
+    import('./routes/locations/$slug.$sublocationSlug.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute

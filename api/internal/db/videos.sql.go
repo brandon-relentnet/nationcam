@@ -286,3 +286,99 @@ func (q *Queries) ListVideosBySublocation(ctx context.Context, sublocationID *in
 	}
 	return items, nil
 }
+
+const listVideosPaginated = `-- name: ListVideosPaginated :many
+SELECT v.video_id, v.title, v.src, v.type, v.state_id, v.sublocation_id,
+       v.status, v.created_by, v.created_at, v.updated_at,
+       s.name AS state_name,
+       COALESCE(sub.name, '') AS sublocation_name,
+       COUNT(*) OVER()::int AS total_count
+FROM videos v
+JOIN states s ON s.state_id = v.state_id
+LEFT JOIN sublocations sub ON sub.sublocation_id = v.sublocation_id
+WHERE v.status = 'active'
+ORDER BY v.title
+LIMIT $1 OFFSET $2
+`
+
+type ListVideosPaginatedParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListVideosPaginatedRow struct {
+	VideoID         int32     `json:"video_id"`
+	Title           string    `json:"title"`
+	Src             string    `json:"src"`
+	Type            string    `json:"type"`
+	StateID         int32     `json:"state_id"`
+	SublocationID   *int32    `json:"sublocation_id"`
+	Status          string    `json:"status"`
+	CreatedBy       string    `json:"created_by"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	StateName       string    `json:"state_name"`
+	SublocationName string    `json:"sublocation_name"`
+	TotalCount      int32     `json:"total_count"`
+}
+
+func (q *Queries) ListVideosPaginated(ctx context.Context, arg ListVideosPaginatedParams) ([]ListVideosPaginatedRow, error) {
+	rows, err := q.db.Query(ctx, listVideosPaginated, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListVideosPaginatedRow{}
+	for rows.Next() {
+		var i ListVideosPaginatedRow
+		if err := rows.Scan(
+			&i.VideoID,
+			&i.Title,
+			&i.Src,
+			&i.Type,
+			&i.StateID,
+			&i.SublocationID,
+			&i.Status,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.StateName,
+			&i.SublocationName,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateVideo = `-- name: UpdateVideo :exec
+UPDATE videos SET title = $2, src = $3, type = $4, state_id = $5, sublocation_id = $6, status = $7 WHERE video_id = $1
+`
+
+type UpdateVideoParams struct {
+	VideoID       int32  `json:"video_id"`
+	Title         string `json:"title"`
+	Src           string `json:"src"`
+	Type          string `json:"type"`
+	StateID       int32  `json:"state_id"`
+	SublocationID *int32 `json:"sublocation_id"`
+	Status        string `json:"status"`
+}
+
+func (q *Queries) UpdateVideo(ctx context.Context, arg UpdateVideoParams) error {
+	_, err := q.db.Exec(ctx, updateVideo,
+		arg.VideoID,
+		arg.Title,
+		arg.Src,
+		arg.Type,
+		arg.StateID,
+		arg.SublocationID,
+		arg.Status,
+	)
+	return err
+}

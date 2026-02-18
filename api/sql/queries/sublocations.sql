@@ -37,5 +37,21 @@ INSERT INTO sublocations (name, description, state_id)
 VALUES ($1, $2, $3)
 RETURNING sublocation_id, name, description, state_id, slug, created_at, updated_at;
 
+-- name: UpdateSublocation :exec
+UPDATE sublocations SET name = $2, description = $3, state_id = $4 WHERE sublocation_id = $1;
+
 -- name: DeleteSublocation :exec
 DELETE FROM sublocations WHERE sublocation_id = $1;
+
+-- name: ListSublocationsPaginated :many
+SELECT sub.sublocation_id, sub.name, sub.description, sub.state_id, sub.slug,
+       sub.created_at, sub.updated_at,
+       s.name AS state_name,
+       COUNT(v.video_id)::int AS video_count,
+       COUNT(*) OVER()::int AS total_count
+FROM sublocations sub
+JOIN states s ON s.state_id = sub.state_id
+LEFT JOIN videos v ON v.sublocation_id = sub.sublocation_id AND v.status = 'active'
+GROUP BY sub.sublocation_id, s.name
+ORDER BY sub.name
+LIMIT $1 OFFSET $2;

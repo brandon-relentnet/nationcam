@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/brandon-relentnet/nationcam/api/internal/cache"
 	"github.com/brandon-relentnet/nationcam/api/internal/db"
@@ -54,10 +56,92 @@ func DeleteState(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
 			return
 		}
 
-		_ = c.Invalidate(r.Context(), "states:*")
-		_ = c.Invalidate(r.Context(), "sublocations:*")
-		_ = c.Invalidate(r.Context(), "videos:*")
+		if err := c.Invalidate(r.Context(), "states:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "states:*", "error", err)
+		}
+		if err := c.Invalidate(r.Context(), "sublocations:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "sublocations:*", "error", err)
+		}
+		if err := c.Invalidate(r.Context(), "videos:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "videos:*", "error", err)
+		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// ListStatesPaginated handles GET /states?page=1&per_page=20 — paginated list.
+func ListStatesPaginated(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		limit, offset, page, perPage := parsePagination(r)
+
+		rows, err := db.New(pool).ListStatesPaginated(r.Context(), db.ListStatesPaginatedParams{
+			Limit:  limit,
+			Offset: offset,
+		})
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		var total int32
+		if len(rows) > 0 {
+			total = rows[0].TotalCount
+		}
+
+		writeJSON(w, http.StatusOK, paginatedResponse{
+			Data:    rows,
+			Total:   total,
+			Page:    page,
+			PerPage: perPage,
+		})
+	}
+}
+
+type updateStateRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// UpdateState handles PUT /states/{id} — updates a state (admin only).
+func UpdateState(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idStr := chi.URLParam(r, "id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id <= 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid state id"})
+			return
+		}
+
+		var req updateStateRequest
+		if err := readJSON(r, &req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+			return
+		}
+		if req.Name == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
+			return
+		}
+
+		if err := db.New(pool).UpdateState(r.Context(), db.UpdateStateParams{
+			StateID:     int32(id),
+			Name:        req.Name,
+			Description: req.Description,
+		}); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		// Re-fetch to return the updated rich type.
+		row, err := db.New(pool).GetStateByID(r.Context(), int32(id))
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		if err := c.Invalidate(r.Context(), "states:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "states:*", "error", err)
+		}
+		writeJSON(w, http.StatusOK, row)
 	}
 }
 
@@ -95,7 +179,9 @@ func CreateState(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
 			return
 		}
 
-		_ = c.Invalidate(r.Context(), "states:*")
+		if err := c.Invalidate(r.Context(), "states:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "states:*", "error", err)
+		}
 		writeJSON(w, http.StatusCreated, row)
 	}
 }

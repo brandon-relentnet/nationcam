@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -80,10 +81,109 @@ func DeleteVideo(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
 			return
 		}
 
-		_ = c.Invalidate(r.Context(), "videos:*")
-		_ = c.Invalidate(r.Context(), "states:*")
-		_ = c.Invalidate(r.Context(), "sublocations:*")
+		if err := c.Invalidate(r.Context(), "videos:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "videos:*", "error", err)
+		}
+		if err := c.Invalidate(r.Context(), "states:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "states:*", "error", err)
+		}
+		if err := c.Invalidate(r.Context(), "sublocations:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "sublocations:*", "error", err)
+		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// ListVideosPaginated handles GET /videos/paginated?page=1&per_page=20 — paginated list.
+func ListVideosPaginated(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		limit, offset, page, perPage := parsePagination(r)
+
+		rows, err := db.New(pool).ListVideosPaginated(r.Context(), db.ListVideosPaginatedParams{
+			Limit:  limit,
+			Offset: offset,
+		})
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		var total int32
+		if len(rows) > 0 {
+			total = rows[0].TotalCount
+		}
+
+		writeJSON(w, http.StatusOK, paginatedResponse{
+			Data:    rows,
+			Total:   total,
+			Page:    page,
+			PerPage: perPage,
+		})
+	}
+}
+
+type updateVideoRequest struct {
+	Title         string `json:"title"`
+	Src           string `json:"src"`
+	Type          string `json:"type"`
+	StateID       int32  `json:"state_id"`
+	SublocationID *int32 `json:"sublocation_id"`
+	Status        string `json:"status"`
+}
+
+// UpdateVideo handles PUT /videos/{id} — updates a video (admin only).
+func UpdateVideo(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idStr := chi.URLParam(r, "id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id <= 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid video id"})
+			return
+		}
+
+		var req updateVideoRequest
+		if err := readJSON(r, &req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+			return
+		}
+		if req.Title == "" || req.Src == "" || req.StateID == 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "title, src, and state_id are required"})
+			return
+		}
+		if req.Type == "" {
+			req.Type = "application/x-mpegURL"
+		}
+		if req.Status == "" {
+			req.Status = "active"
+		}
+
+		if err := db.New(pool).UpdateVideo(r.Context(), db.UpdateVideoParams{
+			VideoID:       int32(id),
+			Title:         req.Title,
+			Src:           req.Src,
+			Type:          req.Type,
+			StateID:       req.StateID,
+			SublocationID: req.SublocationID,
+			Status:        req.Status,
+		}); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		// Re-fetch to return the updated rich type.
+		row, err := db.New(pool).GetVideoByID(r.Context(), int32(id))
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		if err := c.Invalidate(r.Context(), "videos:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "videos:*", "error", err)
+		}
+		if err := c.Invalidate(r.Context(), "states:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "states:*", "error", err)
+		}
+		writeJSON(w, http.StatusOK, row)
 	}
 }
 
@@ -136,9 +236,12 @@ func CreateVideo(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
 			return
 		}
 
-		_ = c.Invalidate(r.Context(), "videos:*")
-		// Also invalidate state caches since video counts change.
-		_ = c.Invalidate(r.Context(), "states:*")
+		if err := c.Invalidate(r.Context(), "videos:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "videos:*", "error", err)
+		}
+		if err := c.Invalidate(r.Context(), "states:*"); err != nil {
+			slog.Warn("cache invalidation failed", "pattern", "states:*", "error", err)
+		}
 		writeJSON(w, http.StatusCreated, row)
 	}
 }

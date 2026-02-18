@@ -45,14 +45,26 @@ func (c *Cache) Set(ctx context.Context, key string, value string, ttl time.Dura
 }
 
 // Invalidate deletes all keys matching the given pattern (e.g. "states:*").
+// Uses a pipeline for efficient batch deletion.
 func (c *Cache) Invalidate(ctx context.Context, pattern string) error {
+	var keys []string
 	iter := c.client.Scan(ctx, 0, pattern, 100).Iterator()
 	for iter.Next(ctx) {
-		if err := c.client.Del(ctx, iter.Val()).Err(); err != nil {
-			return err
-		}
+		keys = append(keys, iter.Val())
 	}
-	return iter.Err()
+	if err := iter.Err(); err != nil {
+		return err
+	}
+	if len(keys) == 0 {
+		return nil
+	}
+
+	pipe := c.client.Pipeline()
+	for _, key := range keys {
+		pipe.Del(ctx, key)
+	}
+	_, err := pipe.Exec(ctx)
+	return err
 }
 
 // Ping checks that Redis is reachable.
