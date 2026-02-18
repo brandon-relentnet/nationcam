@@ -5,7 +5,7 @@ import type { IdTokenClaims } from '@logto/react'
 const API_RESOURCE =
   import.meta.env['VITE_LOGTO_API_RESOURCE'] ?? 'https://api.nationcam.com'
 
-export interface UserInfo {
+interface UserInfo {
   sub: string
   name: string | null
   picture: string | null
@@ -34,7 +34,6 @@ export function useAuth() {
     signOut,
     getAccessToken,
     getIdTokenClaims,
-    fetchUserInfo,
   } = useLogto()
 
   const [user, setUser] = useState<UserInfo | null>(null)
@@ -80,6 +79,5 @@ export function useAuth() {
     login,
     logout,
     getToken,
-    fetchUserInfo,
   }
 }

@@ -16,27 +16,21 @@ import (
 
 type contextKey string
 
-const (
-	// UserIDKey is the context key for the authenticated user's Logto subject.
-	UserIDKey contextKey = "user_id"
-	// RolesKey is the context key for the user's roles.
-	RolesKey contextKey = "roles"
-)
+// UserIDKey is the context key for the authenticated user's Logto subject.
+const UserIDKey contextKey = "user_id"
 
 // Auth validates Logto-issued JWTs using the JWKS discovery endpoint.
 type Auth struct {
-	jwksURL  string
-	resource string
-	mu       sync.RWMutex
-	keySet   *jose.JSONWebKeySet
-	fetched  time.Time
+	jwksURL string
+	mu      sync.RWMutex
+	keySet  *jose.JSONWebKeySet
+	fetched time.Time
 }
 
 // NewAuth creates an Auth middleware that validates tokens from the given Logto endpoint.
-func NewAuth(logtoEndpoint, resource string) *Auth {
+func NewAuth(logtoEndpoint string) *Auth {
 	return &Auth{
-		jwksURL:  strings.TrimRight(logtoEndpoint, "/") + "/oidc/jwks",
-		resource: resource,
+		jwksURL: strings.TrimRight(logtoEndpoint, "/") + "/oidc/jwks",
 	}
 }
 
@@ -58,7 +52,6 @@ func (a *Auth) Authenticate(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), UserIDKey, claims.Subject)
-		ctx = context.WithValue(ctx, RolesKey, claims.Roles)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -84,9 +77,7 @@ func UserID(ctx context.Context) string {
 }
 
 type tokenClaims struct {
-	Subject  string   `json:"sub"`
-	Audience any      `json:"aud"`
-	Roles    []string `json:"roles"`
+	Subject string `json:"sub"`
 }
 
 func (a *Auth) validateToken(ctx context.Context, rawToken string) (*tokenClaims, error) {

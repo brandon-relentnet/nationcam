@@ -11,9 +11,8 @@ type Config struct {
 	Port           string
 	DatabaseURL    string
 	RedisURL       string
-	LogtoEndpoint  string
-	LogtoResource  string
-	CORSOrigins    []string
+	LogtoEndpoint string
+	CORSOrigins   []string
 }
 
 // Load reads configuration from environment variables with sensible defaults.
@@ -36,7 +35,6 @@ func Load() (*Config, error) {
 		DatabaseURL:   dbURL,
 		RedisURL:      envOr("REDIS_URL", "redis://localhost:6379/0"),
 		LogtoEndpoint: envOr("LOGTO_ENDPOINT", "http://localhost:3301"),
-		LogtoResource: envOr("LOGTO_RESOURCE", "https://api.nationcam.com"),
 		CORSOrigins:   corsList,
 	}, nil
 }

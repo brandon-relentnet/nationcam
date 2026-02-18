@@ -4,9 +4,6 @@ import { useAuth } from '@/hooks/useAuth'
 import Button from '@/components/Button'
 import Reveal from '@/components/Reveal'
 
-const LOGTO_ENDPOINT =
-  import.meta.env['VITE_LOGTO_ENDPOINT'] ?? 'https://auth.nationcam.com'
-
 const ADMIN_CONSOLE_URL = 'https://admin.auth.nationcam.com'
 
 export const Route = createFileRoute('/admin')({ component: AdminPage })

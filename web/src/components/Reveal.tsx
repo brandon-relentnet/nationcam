@@ -58,12 +58,4 @@ export default function Reveal({
   )
 }
 
-/**
- * Returns the CSS class name for a given reveal variant.
- * Use this when you need the class directly (e.g. on stagger children).
- */
-export function revealClass(variant: RevealVariant = 'default'): string {
-  return variantClassMap[variant]
-}
 
-export type { RevealVariant }

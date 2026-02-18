@@ -71,7 +71,7 @@ func run() error {
 	slog.Info("redis connected")
 
 	// ── Auth middleware ─────────────────────────────────────────────
-	auth := middleware.NewAuth(cfg.LogtoEndpoint, cfg.LogtoResource)
+	auth := middleware.NewAuth(cfg.LogtoEndpoint)
 
 	// ── Build router ───────────────────────────────────────────────
 	router := handler.NewRouter(pool, redisCache, auth, cfg.CORSOrigins)
