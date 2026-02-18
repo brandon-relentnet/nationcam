@@ -36,3 +36,6 @@ GROUP BY sub.sublocation_id, s.name;
 INSERT INTO sublocations (name, description, state_id)
 VALUES ($1, $2, $3)
 RETURNING sublocation_id, name, description, state_id, slug, created_at, updated_at;
+
+-- name: DeleteSublocation :exec
+DELETE FROM sublocations WHERE sublocation_id = $1;

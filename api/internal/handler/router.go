@@ -29,10 +29,12 @@ func NewRouter(pool *pgxpool.Pool, c *cache.Cache, auth *mw.Auth, corsOrigins []
 	r.Get("/states/{slug}/sublocations", ListSublocationsByState(pool, c))
 	r.Get("/sublocations/{slug}", GetSublocation(pool, c))
 	r.With(mw.RequireAdmin).Post("/sublocations", CreateSublocation(pool, c))
+	r.With(mw.RequireAdmin).Delete("/sublocations/{id}", DeleteSublocation(pool, c))
 
 	// Videos.
 	r.Get("/videos", ListVideos(pool, c))
 	r.With(mw.RequireAdmin).Post("/videos", CreateVideo(pool, c))
+	r.With(mw.RequireAdmin).Delete("/videos/{id}", DeleteVideo(pool, c))
 
 	// Stream proxy — proxies external HLS manifests/segments to bypass CORS.
 	r.Get("/stream-proxy", StreamProxy())

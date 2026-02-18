@@ -51,6 +51,28 @@ func GetSublocation(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
 	}
 }
 
+// DeleteSublocation handles DELETE /sublocations/{id} — deletes a sublocation by ID (admin only).
+func DeleteSublocation(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idStr := chi.URLParam(r, "id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id <= 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid sublocation id"})
+			return
+		}
+
+		if err := db.New(pool).DeleteSublocation(r.Context(), int32(id)); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		_ = c.Invalidate(r.Context(), "sublocations:*")
+		_ = c.Invalidate(r.Context(), "videos:*")
+		_ = c.Invalidate(r.Context(), "states:*")
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 type createSublocationRequest struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`

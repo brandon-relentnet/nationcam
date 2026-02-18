@@ -8,6 +8,7 @@ import {
   Loader2,
   LogIn,
   MapPin,
+  Trash2,
 } from 'lucide-react'
 import type { State, Sublocation, Video } from '@/lib/types'
 import { useAuth } from '@/hooks/useAuth'
@@ -18,6 +19,9 @@ import {
   createState,
   createSublocation,
   createVideo,
+  deleteState,
+  deleteSublocation,
+  deleteVideo,
   fetchStates,
   fetchSublocationsByState,
   fetchVideos,
@@ -350,6 +354,28 @@ function CamerasPanel({
 
   useAutoHide(msg, setMsg)
 
+  const [confirmDelete, setConfirmDelete] = useState<{
+    id: number
+    name: string
+  } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return
+    setDeleting(true)
+    try {
+      const token = await getToken()
+      await deleteVideo(confirmDelete.id, token)
+      setConfirmDelete(null)
+      onSuccess()
+    } catch {
+      setMsg({ text: 'Failed to delete camera.', ok: false })
+      setConfirmDelete(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const filteredSubs = sublocations.filter((s) => s.state_id === stateId)
   const sortedVideos = [...videos].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
@@ -393,81 +419,97 @@ function CamerasPanel({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-5">
-      {/* Form */}
-      <div className="lg:col-span-2">
-        <FormCard title="Add Camera" icon={Film}>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <DashInput
-              label="Title"
-              value={title}
-              onChange={setTitle}
-              placeholder="e.g. Miami Beach South Cam"
-            />
-            <DashInput
-              label="Source URL"
-              value={src}
-              onChange={setSrc}
-              placeholder="e.g. https://stream.example.com/live.m3u8"
-            />
-            <Dropdown
-              label="Video Type"
-              options={VIDEO_TYPE_OPTIONS}
-              selectedValue={type}
-              onSelect={(v) => setType(String(v))}
-            />
-            <Dropdown
-              label="State"
-              options={states.map((s) => ({
-                value: s.state_id,
-                label: s.name,
-              }))}
-              selectedValue={stateId}
-              onSelect={(v) => {
-                setStateId(Number(v))
-                setSublocationId('')
-              }}
-            />
-            {filteredSubs.length > 0 && (
+    <>
+      <div className="grid gap-6 lg:grid-cols-5">
+        {/* Form */}
+        <div className="lg:col-span-2">
+          <FormCard title="Add Camera" icon={Film}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <DashInput
+                label="Title"
+                value={title}
+                onChange={setTitle}
+                placeholder="e.g. Miami Beach South Cam"
+              />
+              <DashInput
+                label="Source URL"
+                value={src}
+                onChange={setSrc}
+                placeholder="e.g. https://stream.example.com/live.m3u8"
+              />
               <Dropdown
-                label="Sublocation"
-                options={filteredSubs.map((s) => ({
-                  value: s.sublocation_id,
+                label="Video Type"
+                options={VIDEO_TYPE_OPTIONS}
+                selectedValue={type}
+                onSelect={(v) => setType(String(v))}
+              />
+              <Dropdown
+                label="State"
+                options={states.map((s) => ({
+                  value: s.state_id,
                   label: s.name,
                 }))}
-                selectedValue={sublocationId}
-                onSelect={(v) => setSublocationId(Number(v))}
+                selectedValue={stateId}
+                onSelect={(v) => {
+                  setStateId(Number(v))
+                  setSublocationId('')
+                }}
               />
-            )}
-            <Dropdown
-              label="Status"
-              options={STATUS_OPTIONS}
-              selectedValue={status}
-              onSelect={(v) => setStatus(String(v))}
-            />
-            <StatusBanner msg={msg} />
-            <SubmitBtn submitting={submitting} label="Add Camera" />
-          </form>
-        </FormCard>
+              {filteredSubs.length > 0 && (
+                <Dropdown
+                  label="Sublocation"
+                  options={filteredSubs.map((s) => ({
+                    value: s.sublocation_id,
+                    label: s.name,
+                  }))}
+                  selectedValue={sublocationId}
+                  onSelect={(v) => setSublocationId(Number(v))}
+                />
+              )}
+              <Dropdown
+                label="Status"
+                options={STATUS_OPTIONS}
+                selectedValue={status}
+                onSelect={(v) => setStatus(String(v))}
+              />
+              <StatusBanner msg={msg} />
+              <SubmitBtn submitting={submitting} label="Add Camera" />
+            </form>
+          </FormCard>
+        </div>
+
+        {/* List */}
+        <div className="lg:col-span-3">
+          <ListCard
+            title="Existing Cameras"
+            count={videos.length}
+            loading={loading}
+            empty={videos.length === 0}
+            emptyIcon={Film}
+            emptyText="No cameras yet. Add one to get started."
+          >
+            {displayed.map((v, i) => (
+              <VideoRow
+                key={v.video_id}
+                video={v}
+                index={i}
+                onDelete={(id, name) => setConfirmDelete({ id, name })}
+              />
+            ))}
+            <ListFooter shown={displayed.length} total={videos.length} />
+          </ListCard>
+        </div>
       </div>
 
-      {/* List */}
-      <div className="lg:col-span-3">
-        <ListCard
-          title="Existing Cameras"
-          count={videos.length}
-          loading={loading}
-          empty={videos.length === 0}
-          emptyIcon={Film}
-          emptyText="No cameras yet. Add one to get started."
-        >
-          {displayed.map((v, i) => (
-            <VideoRow key={v.video_id} video={v} index={i} />
-          ))}
-          <ListFooter shown={displayed.length} total={videos.length} />
-        </ListCard>
-      </div>
-    </div>
+      {confirmDelete && (
+        <ConfirmDeleteDialog
+          name={confirmDelete.name}
+          deleting={deleting}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+    </>
   )
 }
 
@@ -490,6 +532,28 @@ function StatesPanel({
   const [msg, setMsg] = useState<FormMsg>(null)
 
   useAutoHide(msg, setMsg)
+
+  const [confirmDelete, setConfirmDelete] = useState<{
+    slug: string
+    name: string
+  } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return
+    setDeleting(true)
+    try {
+      const token = await getToken()
+      await deleteState(confirmDelete.slug, token)
+      setConfirmDelete(null)
+      onSuccess()
+    } catch {
+      setMsg({ text: 'Failed to delete state.', ok: false })
+      setConfirmDelete(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const sorted = [...states].sort((a, b) => a.name.localeCompare(b.name))
   const displayed = sorted.slice(0, MAX_LIST_ITEMS)
@@ -520,44 +584,62 @@ function StatesPanel({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-5">
-      <div className="lg:col-span-2">
-        <FormCard title="Add State" icon={MapPin}>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <DashInput
-              label="State Name"
-              value={name}
-              onChange={setName}
-              placeholder="e.g. Florida"
-            />
-            <DashInput
-              label="Description"
-              value={description}
-              onChange={setDescription}
-              placeholder="Brief description (optional)"
-            />
-            <StatusBanner msg={msg} />
-            <SubmitBtn submitting={submitting} label="Add State" />
-          </form>
-        </FormCard>
+    <>
+      <div className="grid gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-2">
+          <FormCard title="Add State" icon={MapPin}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <DashInput
+                label="State Name"
+                value={name}
+                onChange={setName}
+                placeholder="e.g. Florida"
+              />
+              <DashInput
+                label="Description"
+                value={description}
+                onChange={setDescription}
+                placeholder="Brief description (optional)"
+              />
+              <StatusBanner msg={msg} />
+              <SubmitBtn submitting={submitting} label="Add State" />
+            </form>
+          </FormCard>
+        </div>
+
+        <div className="lg:col-span-3">
+          <ListCard
+            title="Existing States"
+            count={states.length}
+            loading={loading}
+            empty={states.length === 0}
+            emptyIcon={MapPin}
+            emptyText="No states yet. Add one to get started."
+          >
+            {displayed.map((s, i) => (
+              <StateRow
+                key={s.state_id}
+                state={s}
+                index={i}
+                onDelete={(slug, label) =>
+                  setConfirmDelete({ slug, name: label })
+                }
+              />
+            ))}
+            <ListFooter shown={displayed.length} total={states.length} />
+          </ListCard>
+        </div>
       </div>
 
-      <div className="lg:col-span-3">
-        <ListCard
-          title="Existing States"
-          count={states.length}
-          loading={loading}
-          empty={states.length === 0}
-          emptyIcon={MapPin}
-          emptyText="No states yet. Add one to get started."
-        >
-          {displayed.map((s, i) => (
-            <StateRow key={s.state_id} state={s} index={i} />
-          ))}
-          <ListFooter shown={displayed.length} total={states.length} />
-        </ListCard>
-      </div>
-    </div>
+      {confirmDelete && (
+        <ConfirmDeleteDialog
+          name={confirmDelete.name}
+          deleting={deleting}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+    </>
   )
 }
 
@@ -583,6 +665,28 @@ function SublocationsPanel({
   const [msg, setMsg] = useState<FormMsg>(null)
 
   useAutoHide(msg, setMsg)
+
+  const [confirmDelete, setConfirmDelete] = useState<{
+    id: number
+    name: string
+  } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return
+    setDeleting(true)
+    try {
+      const token = await getToken()
+      await deleteSublocation(confirmDelete.id, token)
+      setConfirmDelete(null)
+      onSuccess()
+    } catch {
+      setMsg({ text: 'Failed to delete sublocation.', ok: false })
+      setConfirmDelete(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const sorted = [...sublocations].sort((a, b) => a.name.localeCompare(b.name))
   const displayed = sorted.slice(0, MAX_LIST_ITEMS)
@@ -618,57 +722,71 @@ function SublocationsPanel({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-5">
-      <div className="lg:col-span-2">
-        <FormCard title="Add Sublocation" icon={Landmark}>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <DashInput
-              label="Sublocation Name"
-              value={name}
-              onChange={setName}
-              placeholder="e.g. Miami Beach"
-            />
-            <Dropdown
-              label="Parent State"
-              options={states.map((s) => ({
-                value: s.state_id,
-                label: s.name,
-              }))}
-              selectedValue={stateId}
-              onSelect={(v) => setStateId(Number(v))}
-            />
-            <DashInput
-              label="Description"
-              value={description}
-              onChange={setDescription}
-              placeholder="Brief description (optional)"
-            />
-            <StatusBanner msg={msg} />
-            <SubmitBtn submitting={submitting} label="Add Sublocation" />
-          </form>
-        </FormCard>
+    <>
+      <div className="grid gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-2">
+          <FormCard title="Add Sublocation" icon={Landmark}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <DashInput
+                label="Sublocation Name"
+                value={name}
+                onChange={setName}
+                placeholder="e.g. Miami Beach"
+              />
+              <Dropdown
+                label="Parent State"
+                options={states.map((s) => ({
+                  value: s.state_id,
+                  label: s.name,
+                }))}
+                selectedValue={stateId}
+                onSelect={(v) => setStateId(Number(v))}
+              />
+              <DashInput
+                label="Description"
+                value={description}
+                onChange={setDescription}
+                placeholder="Brief description (optional)"
+              />
+              <StatusBanner msg={msg} />
+              <SubmitBtn submitting={submitting} label="Add Sublocation" />
+            </form>
+          </FormCard>
+        </div>
+
+        <div className="lg:col-span-3">
+          <ListCard
+            title="Existing Sublocations"
+            count={sublocations.length}
+            loading={loading}
+            empty={sublocations.length === 0}
+            emptyIcon={Landmark}
+            emptyText="No sublocations yet. Add one to get started."
+          >
+            {displayed.map((s, i) => (
+              <SublocationRow
+                key={s.sublocation_id}
+                sublocation={s}
+                index={i}
+                onDelete={(id, label) =>
+                  setConfirmDelete({ id, name: label })
+                }
+              />
+            ))}
+            <ListFooter shown={displayed.length} total={sublocations.length} />
+          </ListCard>
+        </div>
       </div>
 
-      <div className="lg:col-span-3">
-        <ListCard
-          title="Existing Sublocations"
-          count={sublocations.length}
-          loading={loading}
-          empty={sublocations.length === 0}
-          emptyIcon={Landmark}
-          emptyText="No sublocations yet. Add one to get started."
-        >
-          {displayed.map((s, i) => (
-            <SublocationRow
-              key={s.sublocation_id}
-              sublocation={s}
-              index={i}
-            />
-          ))}
-          <ListFooter shown={displayed.length} total={sublocations.length} />
-        </ListCard>
-      </div>
-    </div>
+      {confirmDelete && (
+        <ConfirmDeleteDialog
+          name={confirmDelete.name}
+          deleting={deleting}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+    </>
   )
 }
 
@@ -859,7 +977,15 @@ function ListFooter({ shown, total }: { shown: number; total: number }) {
 
 /* ──── Item Rows ──── */
 
-function VideoRow({ video, index }: { video: Video; index: number }) {
+function VideoRow({
+  video,
+  index,
+  onDelete,
+}: {
+  video: Video
+  index: number
+  onDelete: (id: number, name: string) => void
+}) {
   const typeLabel = VIDEO_TYPE_LABELS[video.type] ?? video.type
   const isActive = video.status === 'active'
   return (
@@ -887,11 +1013,20 @@ function VideoRow({ video, index }: { video: Video; index: number }) {
         />
         {isActive ? 'Live' : 'Off'}
       </span>
+      <DeleteBtn onClick={() => onDelete(video.video_id, video.title)} />
     </div>
   )
 }
 
-function StateRow({ state, index }: { state: State; index: number }) {
+function StateRow({
+  state,
+  index,
+  onDelete,
+}: {
+  state: State
+  index: number
+  onDelete: (slug: string, name: string) => void
+}) {
   return (
     <div
       className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-surface1/50"
@@ -906,6 +1041,7 @@ function StateRow({ state, index }: { state: State; index: number }) {
       <span className="shrink-0 rounded-full bg-surface1 px-2.5 py-0.5 font-mono text-xs text-subtext0">
         {state.video_count} cam{state.video_count !== 1 ? 's' : ''}
       </span>
+      <DeleteBtn onClick={() => onDelete(state.slug, state.name)} />
     </div>
   )
 }
@@ -913,9 +1049,11 @@ function StateRow({ state, index }: { state: State; index: number }) {
 function SublocationRow({
   sublocation,
   index,
+  onDelete,
 }: {
   sublocation: Sublocation
   index: number
+  onDelete: (id: number, name: string) => void
 }) {
   return (
     <div
@@ -933,6 +1071,85 @@ function SublocationRow({
       <span className="shrink-0 rounded-full bg-surface1 px-2.5 py-0.5 font-mono text-xs text-subtext0">
         {sublocation.video_count} cam{sublocation.video_count !== 1 ? 's' : ''}
       </span>
+      <DeleteBtn onClick={() => onDelete(sublocation.sublocation_id, sublocation.name)} />
+    </div>
+  )
+}
+
+/* ──── Delete Button ──── */
+
+function DeleteBtn({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-subtext0 transition-colors duration-150 hover:bg-live/10 hover:text-live"
+      title="Delete"
+    >
+      <Trash2 size={14} />
+    </button>
+  )
+}
+
+/* ──── Confirm Delete Dialog ──── */
+
+function ConfirmDeleteDialog({
+  name,
+  deleting,
+  onConfirm,
+  onCancel,
+}: {
+  name: string
+  deleting: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div
+        className="mx-4 w-full max-w-sm rounded-xl border border-overlay0 bg-surface0 p-6 shadow-2xl"
+        style={{
+          opacity: 0,
+          animation: 'scale-fade-in 250ms var(--spring-poppy) forwards',
+        }}
+      >
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-live/10">
+            <Trash2 size={18} className="text-live" />
+          </div>
+          <div>
+            <h5 className="mb-0 !text-base font-semibold text-text">
+              Confirm Delete
+            </h5>
+            <p className="mb-0 text-xs text-subtext0">
+              This action cannot be undone.
+            </p>
+          </div>
+        </div>
+        <p className="mb-5 text-sm text-subtext1">
+          Are you sure you want to delete{' '}
+          <span className="font-semibold text-text">{name}</span>?
+        </p>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={deleting}
+            className="flex-1 rounded-lg border border-overlay0 bg-surface1 px-4 py-2 text-sm font-medium text-text transition-colors duration-150 hover:bg-surface2 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={deleting}
+            className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-live px-4 py-2 text-sm font-semibold text-white transition-[background-color,opacity] duration-150 hover:bg-live/90 disabled:opacity-60"
+          >
+            {deleting && <Loader2 size={14} className="animate-spin" />}
+            {deleting ? 'Deleting...' : 'Delete'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

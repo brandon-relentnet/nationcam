@@ -45,3 +45,6 @@ WHERE v.video_id = $1;
 INSERT INTO videos (title, src, type, state_id, sublocation_id, status, created_by)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING video_id, title, src, type, state_id, sublocation_id, status, created_by, created_at, updated_at;
+
+-- name: DeleteVideo :exec
+DELETE FROM videos WHERE video_id = $1;

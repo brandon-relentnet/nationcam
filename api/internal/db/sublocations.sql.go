@@ -37,6 +37,15 @@ func (q *Queries) CreateSublocation(ctx context.Context, arg CreateSublocationPa
 	return i, err
 }
 
+const deleteSublocation = `-- name: DeleteSublocation :exec
+DELETE FROM sublocations WHERE sublocation_id = $1
+`
+
+func (q *Queries) DeleteSublocation(ctx context.Context, sublocationID int32) error {
+	_, err := q.db.Exec(ctx, deleteSublocation, sublocationID)
+	return err
+}
+
 const getSublocationByID = `-- name: GetSublocationByID :one
 SELECT sub.sublocation_id, sub.name, sub.description, sub.state_id, sub.slug,
        sub.created_at, sub.updated_at,

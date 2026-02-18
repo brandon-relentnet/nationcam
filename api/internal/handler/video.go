@@ -7,6 +7,7 @@ import (
 	"github.com/brandon-relentnet/nationcam/api/internal/cache"
 	"github.com/brandon-relentnet/nationcam/api/internal/db"
 	"github.com/brandon-relentnet/nationcam/api/internal/middleware"
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -61,6 +62,28 @@ func ListVideos(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
 			}
 			writeJSON(w, http.StatusOK, rows)
 		})(w, r)
+	}
+}
+
+// DeleteVideo handles DELETE /videos/{id} — deletes a video by ID (admin only).
+func DeleteVideo(pool *pgxpool.Pool, c *cache.Cache) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idStr := chi.URLParam(r, "id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id <= 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid video id"})
+			return
+		}
+
+		if err := db.New(pool).DeleteVideo(r.Context(), int32(id)); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		_ = c.Invalidate(r.Context(), "videos:*")
+		_ = c.Invalidate(r.Context(), "states:*")
+		_ = c.Invalidate(r.Context(), "sublocations:*")
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

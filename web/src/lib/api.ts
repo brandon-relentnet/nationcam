@@ -46,6 +46,22 @@ async function post<T>(
   return res.json() as Promise<T>
 }
 
+async function del(path: string, token?: string | null): Promise<void> {
+  const headers: Record<string, string> = {}
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'DELETE',
+    headers,
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`DELETE ${path} failed: ${res.status} ${text}`)
+  }
+}
+
 /* ──── States ──── */
 
 export async function fetchStates(): Promise<Array<State>> {
@@ -68,6 +84,13 @@ export async function createState(
     },
     token,
   )
+}
+
+export async function deleteState(
+  slug: string,
+  token?: string | null,
+): Promise<void> {
+  return del(`/states/${slug}`, token)
 }
 
 /* ──── Sublocations ──── */
@@ -99,6 +122,13 @@ export async function createSublocation(
   )
 }
 
+export async function deleteSublocation(
+  id: number,
+  token?: string | null,
+): Promise<void> {
+  return del(`/sublocations/${id}`, token)
+}
+
 /* ──── Videos ──── */
 
 export async function fetchVideos(): Promise<Array<Video>> {
@@ -115,6 +145,13 @@ export async function fetchVideosBySublocation(
   sublocationId: number,
 ): Promise<Array<Video>> {
   return get<Array<Video>>(`/videos?sublocation_id=${sublocationId}`)
+}
+
+export async function deleteVideo(
+  id: number,
+  token?: string | null,
+): Promise<void> {
+  return del(`/videos/${id}`, token)
 }
 
 export async function createVideo(
