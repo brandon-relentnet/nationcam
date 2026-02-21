@@ -50,10 +50,11 @@ func NewRouter(pool *pgxpool.Pool, c *cache.Cache, auth *mw.Auth, corsOrigins []
 	r.Get("/stream-proxy", StreamProxy())
 
 	// Streams (Restreamer proxy) — only mounted if configured.
+	// Accepts both X-API-Key (external tools) and Logto JWT (dashboard).
 	if rc != nil && streamerAPIKey != "" {
 		rl := mw.NewRateLimiter(10, time.Minute)
 		r.Route("/streams", func(r chi.Router) {
-			r.Use(mw.RequireAPIKey(streamerAPIKey))
+			r.Use(mw.RequireAPIKeyOrAdmin(streamerAPIKey))
 			r.Get("/", ListStreams(rc))
 			r.With(mw.RateLimit(rl)).Post("/", CreateStream(rc))
 			r.Get("/{id}", GetStream(rc))

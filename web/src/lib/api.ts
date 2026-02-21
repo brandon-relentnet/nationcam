@@ -1,9 +1,12 @@
 import type {
   CreateStateInput,
+  CreateStreamInput,
   CreateSublocationInput,
   CreateVideoInput,
   PaginatedResponse,
   State,
+  StreamDetail,
+  StreamResponse,
   Sublocation,
   UpdateStateInput,
   UpdateSublocationInput,
@@ -300,4 +303,37 @@ export async function fetchVideosPaginated(
     `/videos/paginated?page=${page}&per_page=${perPage}`,
     token,
   )
+}
+
+/* ──── Streams (Restreamer) ──── */
+
+export async function fetchStreams(
+  token?: string | null,
+): Promise<Array<StreamDetail>> {
+  return authedGet<Array<StreamDetail>>('/streams', token)
+}
+
+export async function createStream(
+  input: CreateStreamInput,
+  token?: string | null,
+): Promise<StreamResponse> {
+  return post<StreamResponse>(
+    '/streams',
+    { name: input.name, rtspUrl: input.rtspUrl },
+    token,
+  )
+}
+
+export async function deleteStream(
+  id: string,
+  token?: string | null,
+): Promise<void> {
+  return del(`/streams/${id}`, token)
+}
+
+export async function restartStream(
+  id: string,
+  token?: string | null,
+): Promise<StreamResponse> {
+  return post<StreamResponse>(`/streams/${id}/restart`, {}, token)
 }

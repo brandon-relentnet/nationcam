@@ -30,3 +30,38 @@ func RequireAPIKey(key string) func(http.Handler) http.Handler {
 		})
 	}
 }
+
+// RequireAPIKeyOrAdmin returns middleware that passes if EITHER:
+//   - X-API-Key header matches the expected key, OR
+//   - The request has a valid Logto JWT (user_id set in context by Authenticate)
+//
+// This allows stream endpoints to be used by both external tools (API key)
+// and the NationCam dashboard (Logto JWT).
+func RequireAPIKeyOrAdmin(key string) func(http.Handler) http.Handler {
+	keyBytes := []byte(key)
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Check API key first (X-API-Key header or query param).
+			provided := r.Header.Get("X-API-Key")
+			if provided == "" {
+				provided = r.URL.Query().Get("apikey")
+			}
+			if provided != "" && subtle.ConstantTimeCompare([]byte(provided), keyBytes) == 1 {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Fall back to Logto JWT (set by Authenticate middleware).
+			userID, _ := r.Context().Value(UserIDKey).(string)
+			if userID != "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "authentication required (API key or sign in)"})
+		})
+	}
+}

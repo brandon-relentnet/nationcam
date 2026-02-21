@@ -5,18 +5,22 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Film,
   Landmark,
   Loader2,
   LogIn,
   MapPin,
   Pencil,
+  Radio,
+  RefreshCw,
   Trash2,
   X,
 } from 'lucide-react'
 import type {
   PaginatedResponse,
   State,
+  StreamDetail,
   Sublocation,
   Video,
 } from '@/lib/types'
@@ -26,17 +30,21 @@ import Dropdown from '@/components/Dropdown'
 import Reveal from '@/components/Reveal'
 import {
   createState,
+  createStream,
   createSublocation,
   createVideo,
   deleteState,
+  deleteStream,
   deleteSublocation,
   deleteVideo,
   fetchStates,
   fetchStatesPaginated,
+  fetchStreams,
   fetchSublocationsByState,
   fetchSublocationsPaginated,
   fetchVideos,
   fetchVideosPaginated,
+  restartStream,
   updateState,
   updateSublocation,
   updateVideo,
@@ -44,12 +52,13 @@ import {
 
 /* ──── Constants ──── */
 
-type Tab = 'cameras' | 'states' | 'sublocations'
+type Tab = 'cameras' | 'states' | 'sublocations' | 'streams'
 
 const TABS: Array<{ id: Tab; label: string; icon: typeof Film }> = [
   { id: 'cameras', label: 'Cameras', icon: Film },
   { id: 'states', label: 'States', icon: MapPin },
   { id: 'sublocations', label: 'Sublocations', icon: Landmark },
+  { id: 'streams', label: 'Streams', icon: Radio },
 ]
 
 const VIDEO_TYPE_OPTIONS = [
@@ -146,6 +155,7 @@ function DashboardContent({ userName }: { userName: string | null }) {
   const [allStates, setAllStates] = useState<Array<State>>([])
   const [allSublocations, setAllSublocations] = useState<Array<Sublocation>>([])
   const [allVideos, setAllVideos] = useState<Array<Video>>([])
+  const [allStreams, setAllStreams] = useState<Array<StreamDetail>>([])
   const [dataLoading, setDataLoading] = useState(true)
 
   // Paginated responses per tab
@@ -163,6 +173,7 @@ function DashboardContent({ userName }: { userName: string | null }) {
   const fetchOverview = async () => {
     setDataLoading(true)
     try {
+      const token = await getToken()
       const [statesData, videosData] = await Promise.all([
         fetchStates(),
         fetchVideos(),
@@ -174,6 +185,14 @@ function DashboardContent({ userName }: { userName: string | null }) {
         statesData.map((s) => fetchSublocationsByState(s.slug)),
       )
       setAllSublocations(allSubs.flat())
+
+      // Streams require auth — fetch silently, empty array on failure.
+      try {
+        const streamsData = await fetchStreams(token)
+        setAllStreams(streamsData)
+      } catch {
+        setAllStreams([])
+      }
     } finally {
       setDataLoading(false)
     }
@@ -197,7 +216,9 @@ function DashboardContent({ userName }: { userName: string | null }) {
   // Refresh everything (after create/update/delete)
   const refreshAll = async () => {
     await fetchOverview()
-    await fetchPaginated(activeTab, currentPage)
+    if (activeTab !== 'streams') {
+      await fetchPaginated(activeTab, currentPage)
+    }
   }
 
   const currentPage =
@@ -212,7 +233,9 @@ function DashboardContent({ userName }: { userName: string | null }) {
   }, [])
 
   useEffect(() => {
-    fetchPaginated(activeTab, currentPage)
+    if (activeTab !== 'streams') {
+      fetchPaginated(activeTab, currentPage)
+    }
   }, [activeTab, statesPage, subsPage, videosPage])
 
   const tabIndex = TABS.findIndex((t) => t.id === activeTab)
@@ -236,7 +259,7 @@ function DashboardContent({ userName }: { userName: string | null }) {
             )}
           </h1>
           <p className="mb-0 max-w-lg text-subtext0">
-            Manage your cameras, states, and sublocations.
+            Manage your cameras, states, sublocations, and streams.
           </p>
         </div>
       </Reveal>
@@ -244,13 +267,13 @@ function DashboardContent({ userName }: { userName: string | null }) {
       {/* Stats */}
       <Reveal variant="float">
         {dataLoading ? (
-          <div className="grid grid-cols-3 gap-4">
-            {[0, 1, 2].map((i) => (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
               <StatSkeleton key={i} />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <StatCard
               icon={Film}
               value={allVideos.length}
@@ -268,6 +291,12 @@ function DashboardContent({ userName }: { userName: string | null }) {
               value={allSublocations.length}
               label="Sublocations"
               delay={160}
+            />
+            <StatCard
+              icon={Radio}
+              value={allStreams.length}
+              label="Live streams"
+              delay={240}
             />
           </div>
         )}
@@ -335,6 +364,14 @@ function DashboardContent({ userName }: { userName: string | null }) {
             paginated={subsPaginated}
             page={subsPage}
             setPage={setSubsPage}
+            getToken={getToken}
+            onSuccess={refreshAll}
+            loading={dataLoading}
+          />
+        )}
+        {activeTab === 'streams' && (
+          <StreamsPanel
+            streams={allStreams}
             getToken={getToken}
             onSuccess={refreshAll}
             loading={dataLoading}
@@ -929,6 +966,171 @@ function SublocationsPanel({
   )
 }
 
+/* ──── Streams Panel ──── */
+
+function StreamsPanel({
+  streams,
+  getToken,
+  onSuccess,
+  loading,
+}: {
+  streams: Array<StreamDetail>
+  getToken: () => Promise<string | null>
+  onSuccess: () => void
+  loading: boolean
+}) {
+  const [name, setName] = useState('')
+  const [rtspUrl, setRtspUrl] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [msg, setMsg] = useState<FormMsg>(null)
+
+  useAutoHide(msg, setMsg)
+
+  const [confirmDelete, setConfirmDelete] = useState<{
+    id: string
+    name: string
+  } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [restarting, setRestarting] = useState<string | null>(null)
+  const [copied, setCopied] = useState<string | null>(null)
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return
+    setDeleting(true)
+    try {
+      const token = await getToken()
+      await deleteStream(confirmDelete.id, token)
+      setConfirmDelete(null)
+      onSuccess()
+    } catch {
+      setMsg({ text: 'Failed to delete stream.', ok: false })
+      setConfirmDelete(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const handleRestart = async (id: string) => {
+    setRestarting(id)
+    try {
+      const token = await getToken()
+      await restartStream(id, token)
+      setMsg({ text: 'Stream restarting...', ok: true })
+      onSuccess()
+    } catch {
+      setMsg({ text: 'Failed to restart stream.', ok: false })
+    } finally {
+      setRestarting(null)
+    }
+  }
+
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text)
+    setCopied(id)
+    setTimeout(() => setCopied(null), 2000)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name || !rtspUrl) {
+      setMsg({ text: 'Please fill in all fields.', ok: false })
+      return
+    }
+    setSubmitting(true)
+    setMsg(null)
+    try {
+      const token = await getToken()
+      await createStream({ name, rtspUrl }, token)
+      setMsg({ text: 'Stream created successfully!', ok: true })
+      setName('')
+      setRtspUrl('')
+      onSuccess()
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message.includes('400')
+          ? 'Invalid RTSP URL. Must start with rtsp:// or rtsps://'
+          : 'Failed to create stream.'
+      setMsg({ text: message, ok: false })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <>
+      <div className="grid gap-6 lg:grid-cols-5">
+        {/* Form */}
+        <div className="lg:col-span-2">
+          <FormCard title="Add Stream" icon={Radio}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <DashInput
+                label="Stream Name"
+                value={name}
+                onChange={setName}
+                placeholder="e.g. Pavilion Front Camera"
+              />
+              <DashInput
+                label="RTSP URL"
+                value={rtspUrl}
+                onChange={setRtspUrl}
+                placeholder="rtsp://user:pass@ip:554/path"
+              />
+              <div className="rounded-lg border border-overlay0/50 bg-base/50 px-3.5 py-2.5">
+                <p className="mb-0 text-xs text-subtext0">
+                  Creates an RTSP-to-HLS stream on Restreamer. The stream will
+                  appear in the Restreamer UI where you can set up YouTube or
+                  Facebook egress.
+                </p>
+              </div>
+              <StatusBanner msg={msg} />
+              <SubmitBtn submitting={submitting} label="Create Stream" />
+            </form>
+          </FormCard>
+        </div>
+
+        {/* List */}
+        <div className="lg:col-span-3">
+          <ListCard
+            title="Active Streams"
+            count={streams.length}
+            loading={loading}
+            empty={streams.length === 0}
+            emptyIcon={Radio}
+            emptyText="No streams yet. Create one to get started."
+          >
+            {streams.map((s, i) => (
+              <StreamRow
+                key={s.streamId}
+                stream={s}
+                index={i}
+                restarting={restarting === s.streamId}
+                copied={copied === s.streamId}
+                onRestart={() => handleRestart(s.streamId)}
+                onCopy={() => handleCopy(s.hlsUrl, s.streamId)}
+                onDelete={() =>
+                  setConfirmDelete({
+                    id: s.streamId,
+                    name: s.name,
+                  })
+                }
+              />
+            ))}
+          </ListCard>
+        </div>
+      </div>
+
+      {confirmDelete && (
+        <ConfirmDeleteDialog
+          name={confirmDelete.name}
+          deleting={deleting}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+    </>
+  )
+}
+
 /* ──── Form Shared Components ──── */
 
 type FormMsg = { text: string; ok: boolean } | null
@@ -1258,6 +1460,94 @@ function SublocationRow({
           onDelete(sublocation.sublocation_id, sublocation.name)
         }
       />
+    </div>
+  )
+}
+
+function StreamRow({
+  stream,
+  index,
+  restarting,
+  copied,
+  onRestart,
+  onCopy,
+  onDelete,
+}: {
+  stream: StreamDetail
+  index: number
+  restarting: boolean
+  copied: boolean
+  onRestart: () => void
+  onCopy: () => void
+  onDelete: () => void
+}) {
+  const isRunning = stream.status === 'running'
+  const isFailed = stream.status === 'failed'
+  const statusColor = isRunning
+    ? 'text-teal'
+    : isFailed
+      ? 'text-live'
+      : 'text-subtext0'
+  const dotColor = isRunning
+    ? 'bg-teal'
+    : isFailed
+      ? 'bg-live'
+      : 'bg-overlay2'
+
+  const runtime = formatRuntime(stream.runtimeSeconds)
+
+  return (
+    <div
+      className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-surface1/50"
+      style={staggerStyle(index)}
+    >
+      <div className="min-w-0 flex-1">
+        <p className="mb-0 truncate text-sm font-medium text-text">
+          {stream.name}
+        </p>
+        <p className="mb-0 truncate text-xs text-subtext0">
+          {runtime}
+          {stream.fps ? ` \u00B7 ${stream.fps.toFixed(1)} fps` : ''}
+          {stream.bitrateKbit
+            ? ` \u00B7 ${(stream.bitrateKbit / 1000).toFixed(1)} Mbps`
+            : ''}
+        </p>
+      </div>
+
+      {/* Status badge */}
+      <span
+        className={`inline-flex shrink-0 items-center gap-1.5 text-xs font-medium ${statusColor}`}
+      >
+        <span className={`h-1.5 w-1.5 rounded-full ${dotColor}`} />
+        {stream.status}
+      </span>
+
+      {/* Copy HLS URL */}
+      <button
+        type="button"
+        onClick={onCopy}
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-subtext0 transition-colors duration-150 hover:bg-accent/10 hover:text-accent"
+        title={copied ? 'Copied!' : 'Copy HLS URL'}
+      >
+        {copied ? <Check size={14} className="text-teal" /> : <Copy size={14} />}
+      </button>
+
+      {/* Restart */}
+      <button
+        type="button"
+        onClick={onRestart}
+        disabled={restarting}
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-subtext0 transition-colors duration-150 hover:bg-accent/10 hover:text-accent disabled:pointer-events-none disabled:opacity-40"
+        title="Restart stream"
+      >
+        <RefreshCw
+          size={14}
+          className={restarting ? 'animate-spin' : ''}
+        />
+      </button>
+
+      {/* Delete */}
+      <DeleteBtn onClick={onDelete} />
     </div>
   )
 }
@@ -1648,6 +1938,15 @@ function staggerStyle(index: number): React.CSSProperties | undefined {
     opacity: 0,
     animation: `fade-in-up 400ms var(--spring-smooth) ${index * 50}ms forwards`,
   }
+}
+
+function formatRuntime(seconds: number): string {
+  if (seconds <= 0) return 'not started'
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  if (h > 0) return `${h}h ${m}m uptime`
+  if (m > 0) return `${m}m uptime`
+  return `${seconds}s uptime`
 }
 
 function timeAgo(dateStr: string): string {

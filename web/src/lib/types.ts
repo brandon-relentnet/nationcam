@@ -81,3 +81,29 @@ export interface PaginatedResponse<T> {
   page: number
   per_page: number
 }
+
+/* ──── Streams (Restreamer) ──── */
+
+export interface StreamDetail {
+  streamId: string
+  name: string
+  hlsUrl: string
+  status: string
+  runtimeSeconds: number
+  fps?: number
+  bitrateKbit?: number
+  memoryMb?: number
+  cpuUsage?: number
+}
+
+export interface StreamResponse {
+  streamId: string
+  name: string
+  hlsUrl: string
+  status: string
+}
+
+export interface CreateStreamInput {
+  name: string
+  rtspUrl: string
+}
