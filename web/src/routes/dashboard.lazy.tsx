@@ -169,11 +169,9 @@ function DashboardContent({ userName }: { userName: string | null }) {
   const [videosPaginated, setVideosPaginated] =
     useState<PaginatedResponse<Video> | null>(null)
 
-  // Fetch non-paginated data (for dropdowns + stat cards).
-  // When isRefresh is true, skip the loading indicator to avoid
-  // flashing skeletons and unmounting child component state.
-  const fetchOverview = async (isRefresh = false) => {
-    if (!isRefresh) setDataLoading(true)
+  // Fetch non-paginated data (for dropdowns + stat cards)
+  const fetchOverview = async () => {
+    setDataLoading(true)
     try {
       const token = await getToken()
       const [statesData, videosData] = await Promise.all([
@@ -191,12 +189,10 @@ function DashboardContent({ userName }: { userName: string | null }) {
       // Streams require auth — fetch silently, empty array on failure.
       try {
         const streamsData = await fetchStreams(token)
-        setAllStreams(Array.isArray(streamsData) ? streamsData : [])
+        setAllStreams(streamsData)
       } catch {
         setAllStreams([])
       }
-    } catch (err) {
-      console.error('fetchOverview failed:', err)
     } finally {
       setDataLoading(false)
     }
@@ -217,16 +213,11 @@ function DashboardContent({ userName }: { userName: string | null }) {
     }
   }
 
-  // Refresh everything (after create/update/delete).
-  // Uses isRefresh=true to avoid flashing loading skeletons.
+  // Refresh everything (after create/update/delete)
   const refreshAll = async () => {
-    try {
-      await fetchOverview(true)
-      if (activeTab !== 'streams') {
-        await fetchPaginated(activeTab, currentPage)
-      }
-    } catch (err) {
-      console.error('refreshAll failed:', err)
+    await fetchOverview()
+    if (activeTab !== 'streams') {
+      await fetchPaginated(activeTab, currentPage)
     }
   }
 
@@ -1033,14 +1024,10 @@ function StreamsPanel({
     }
   }
 
-  const handleCopy = async (text: string, id: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(id)
-      setTimeout(() => setCopied(null), 2000)
-    } catch {
-      // Clipboard API may fail in non-secure contexts
-    }
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text)
+    setCopied(id)
+    setTimeout(() => setCopied(null), 2000)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
