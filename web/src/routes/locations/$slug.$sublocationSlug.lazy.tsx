@@ -8,8 +8,10 @@ import {
 } from '@/lib/api'
 import LocationsHeroSection from '@/components/LocationsHeroSection'
 import AdvertisementLayout from '@/components/AdvertisementLayout'
-import StreamPlayer from '@/components/StreamPlayer'
+import VideoCard from '@/components/VideoCard'
+import CameraToolbar from '@/components/CameraToolbar'
 import Reveal from '@/components/Reveal'
+import { useCameraFilter } from '@/hooks/useCameraFilter'
 
 export const Route = createLazyFileRoute('/locations/$slug/$sublocationSlug')({
   component: SublocationPage,
@@ -37,6 +39,9 @@ function SublocationPage() {
     }
     fetchData()
   }, [sublocationSlug])
+
+  const { search, setSearch, sort, setSort, filtered } =
+    useCameraFilter(videos)
 
   if (loading) {
     return (
@@ -80,28 +85,31 @@ function SublocationPage() {
 
       <div className="page-container">
         <AdvertisementLayout>
-          {videos.length > 0 ? (
+          {/* Toolbar */}
+          {videos.length > 0 && (
+            <CameraToolbar
+              search={search}
+              onSearchChange={setSearch}
+              sort={sort}
+              onSortChange={setSort}
+              resultCount={filtered.length}
+            />
+          )}
+
+          {filtered.length > 0 ? (
             <Reveal stagger>
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {videos.map((video) => (
-                  <div
-                    key={video.video_id}
-                    className="reveal-scale group overflow-hidden rounded-xl border border-overlay0 bg-surface0 shadow-lg transition-[border-color,box-shadow] duration-350 ease-[var(--spring-snappy)] hover:border-accent/30 hover:shadow-xl"
-                  >
-                    <StreamPlayer
-                      src={video.src}
-                      type={video.type}
-                      muted
-                      controls
-                      fluid
-                    />
-                    <div className="px-4 py-3">
-                      <h5 className="mb-0 truncate transition-colors group-hover:text-accent">
-                        {video.title}
-                      </h5>
-                    </div>
-                  </div>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {filtered.map((video) => (
+                  <VideoCard key={video.video_id} video={video} />
                 ))}
+              </div>
+            </Reveal>
+          ) : videos.length > 0 && search.trim() ? (
+            <Reveal variant="scale">
+              <div className="section-container py-12 text-center">
+                <p className="mb-0 text-subtext0">
+                  No cameras matching &ldquo;{search}&rdquo;
+                </p>
               </div>
             </Reveal>
           ) : (

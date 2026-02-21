@@ -9,8 +9,10 @@ import {
 } from '@/lib/api'
 import LocationsHeroSection from '@/components/LocationsHeroSection'
 import AdvertisementLayout from '@/components/AdvertisementLayout'
-import StreamPlayer from '@/components/StreamPlayer'
+import VideoCard from '@/components/VideoCard'
+import CameraToolbar from '@/components/CameraToolbar'
 import Reveal from '@/components/Reveal'
+import { useCameraFilter } from '@/hooks/useCameraFilter'
 
 export const Route = createLazyFileRoute('/locations/$slug/')({
   component: StatePage,
@@ -44,6 +46,10 @@ function StatePage() {
     }
     fetchData()
   }, [slug])
+
+  // Search + sort across ALL videos on this state page
+  const { search, setSearch, sort, setSort, filtered } =
+    useCameraFilter(videos)
 
   if (loading) {
     return (
@@ -80,15 +86,24 @@ function StatePage() {
     )
   }
 
-  // Group videos by sublocation
-  const sublocationSections = sublocations
-    .map((sub) => ({
-      sublocation: sub,
-      videos: videos.filter((v) => v.sublocation_id === sub.sublocation_id),
-    }))
-    .filter(({ videos: subVideos }) => subVideos.length > 0)
+  // When searching, show a flat list (search crosses sublocation boundaries)
+  const isSearching = search.trim().length > 0
 
-  const uncategorizedVideos = videos.filter((v) => !v.sublocation_id)
+  // Group filtered videos by sublocation for the default (non-search) view
+  const sublocationSections = isSearching
+    ? []
+    : sublocations
+        .map((sub) => ({
+          sublocation: sub,
+          videos: filtered.filter(
+            (v) => v.sublocation_id === sub.sublocation_id,
+          ),
+        }))
+        .filter(({ videos: subVideos }) => subVideos.length > 0)
+
+  const uncategorizedVideos = isSearching
+    ? []
+    : filtered.filter((v) => !v.sublocation_id)
 
   return (
     <div>
@@ -96,40 +111,91 @@ function StatePage() {
 
       <div className="page-container">
         <AdvertisementLayout>
-          {/* Videos grouped by sublocation */}
-          {sublocationSections.map(({ sublocation, videos: subVideos }) => (
-            <Reveal key={sublocation.sublocation_id} variant="float">
-              <section className="mb-14">
-                <SublocationHeader
-                  sublocation={sublocation}
-                  slug={slug}
-                  videoCount={subVideos.length}
-                />
-                <Reveal stagger>
-                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                    {subVideos.map((video) => (
-                      <VideoCard key={video.video_id} video={video} />
-                    ))}
-                  </div>
-                </Reveal>
-              </section>
-            </Reveal>
-          ))}
+          {/* Toolbar — always visible when there are videos */}
+          {videos.length > 0 && (
+            <CameraToolbar
+              search={search}
+              onSearchChange={setSearch}
+              sort={sort}
+              onSortChange={setSort}
+              resultCount={filtered.length}
+            />
+          )}
 
-          {/* Uncategorized videos (not assigned to any sublocation) */}
-          {uncategorizedVideos.length > 0 && (
-            <Reveal variant="float">
-              <section className="mb-14">
-                <h3>Other Cameras</h3>
+          {/* ── Search results (flat list) ── */}
+          {isSearching && (
+            <>
+              {filtered.length > 0 ? (
                 <Reveal stagger>
-                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                    {uncategorizedVideos.map((video) => (
-                      <VideoCard key={video.video_id} video={video} />
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {filtered.map((video) => (
+                      <VideoCard
+                        key={video.video_id}
+                        video={video}
+                        showLocation
+                      />
                     ))}
                   </div>
                 </Reveal>
-              </section>
-            </Reveal>
+              ) : (
+                <Reveal variant="scale">
+                  <div className="section-container py-12 text-center">
+                    <p className="mb-0 text-subtext0">
+                      No cameras matching &ldquo;{search}&rdquo;
+                    </p>
+                  </div>
+                </Reveal>
+              )}
+            </>
+          )}
+
+          {/* ── Default view: grouped by sublocation ── */}
+          {!isSearching && (
+            <>
+              {sublocationSections.map(
+                ({ sublocation, videos: subVideos }) => (
+                  <Reveal key={sublocation.sublocation_id} variant="float">
+                    <section className="mb-14">
+                      <SublocationHeader
+                        sublocation={sublocation}
+                        slug={slug}
+                        videoCount={subVideos.length}
+                      />
+                      <Reveal stagger>
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                          {subVideos.map((video) => (
+                            <VideoCard
+                              key={video.video_id}
+                              video={video}
+                            />
+                          ))}
+                        </div>
+                      </Reveal>
+                    </section>
+                  </Reveal>
+                ),
+              )}
+
+              {/* Uncategorized videos */}
+              {uncategorizedVideos.length > 0 && (
+                <Reveal variant="float">
+                  <section className="mb-14">
+                    <h3>Other Cameras</h3>
+                    <Reveal stagger>
+                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                        {uncategorizedVideos.map((video) => (
+                          <VideoCard
+                            key={video.video_id}
+                            video={video}
+                            showLocation
+                          />
+                        ))}
+                      </div>
+                    </Reveal>
+                  </section>
+                </Reveal>
+              )}
+            </>
           )}
 
           {/* Empty state — no videos at all */}
@@ -161,7 +227,7 @@ function SublocationHeader({
   videoCount: number
 }) {
   return (
-    <div className="mb-4 flex items-baseline gap-3">
+    <div className="mb-5 flex items-baseline gap-3">
       <Link
         to="/locations/$slug/$sublocationSlug"
         params={{ slug, sublocationSlug: sublocation.slug }}
@@ -179,21 +245,6 @@ function SublocationHeader({
         <span className="font-mono text-xs text-subtext0">
           {videoCount} camera{videoCount !== 1 ? 's' : ''}
         </span>
-      </div>
-    </div>
-  )
-}
-
-/* ──── Video Card ──── */
-
-function VideoCard({ video }: { video: VideoType }) {
-  return (
-    <div className="reveal-scale group overflow-hidden rounded-xl border border-overlay0 bg-surface0 shadow-lg transition-[border-color,box-shadow] duration-350 ease-[var(--spring-snappy)] hover:border-accent/30 hover:shadow-xl">
-      <StreamPlayer src={video.src} type={video.type} muted controls fluid />
-      <div className="px-4 py-3">
-        <h5 className="mb-0 truncate transition-colors group-hover:text-accent">
-          {video.title}
-        </h5>
       </div>
     </div>
   )
