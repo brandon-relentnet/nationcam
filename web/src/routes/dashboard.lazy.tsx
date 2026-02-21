@@ -1,7 +1,11 @@
 import { createLazyFileRoute } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle,
+  ArrowDownAZ,
+  ArrowUpAZ,
+  CalendarArrowDown,
+  CalendarArrowUp,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -16,11 +20,11 @@ import {
   Radio,
   RefreshCw,
   RotateCcw,
+  Search,
   Trash2,
   X,
 } from 'lucide-react'
 import type {
-  PaginatedResponse,
   State,
   StreamDetail,
   Sublocation,
@@ -39,12 +43,9 @@ import {
   deleteSublocation,
   deleteVideo,
   fetchStates,
-  fetchStatesPaginated,
   fetchStreams,
   fetchSublocationsByState,
-  fetchSublocationsPaginated,
   fetchVideos,
-  fetchVideosPaginated,
   restartStream,
   updateState,
   updateSublocation,
@@ -84,6 +85,27 @@ const STATUS_OPTIONS = [
 ]
 
 const PER_PAGE = 20
+
+const ENTITY_SORT_OPTIONS: Array<{
+  value: string
+  label: string
+  icon: typeof ArrowDownAZ
+}> = [
+  { value: 'a-z', label: 'A\u2192Z', icon: ArrowDownAZ },
+  { value: 'z-a', label: 'Z\u2192A', icon: ArrowUpAZ },
+  { value: 'newest', label: 'Newest', icon: CalendarArrowDown },
+  { value: 'oldest', label: 'Oldest', icon: CalendarArrowUp },
+]
+
+const STREAM_SORT_OPTIONS: Array<{
+  value: string
+  label: string
+  icon: typeof ArrowDownAZ
+}> = [
+  { value: 'a-z', label: 'A\u2192Z', icon: ArrowDownAZ },
+  { value: 'z-a', label: 'Z\u2192A', icon: ArrowUpAZ },
+  { value: 'running', label: 'Running', icon: Radio },
+]
 
 export const Route = createLazyFileRoute('/dashboard')({
   component: DashboardPage,
@@ -182,16 +204,8 @@ function DashboardContent({ userName }: { userName: string | null }) {
   const [dataLoading, setDataLoading] = useState(true)
   const [dataError, setDataError] = useState(false)
 
-  // Paginated responses per tab
-  const [statesPage, setStatesPage] = useState(1)
-  const [statesPaginated, setStatesPaginated] =
-    useState<PaginatedResponse<State> | null>(null)
-  const [subsPage, setSubsPage] = useState(1)
-  const [subsPaginated, setSubsPaginated] =
-    useState<PaginatedResponse<Sublocation> | null>(null)
-  const [videosPage, setVideosPage] = useState(1)
-  const [videosPaginated, setVideosPaginated] =
-    useState<PaginatedResponse<Video> | null>(null)
+  // Server-side pagination removed — all filtering/sorting/pagination
+  // is now handled client-side within each panel using the full datasets.
 
   // Fetch non-paginated data (for dropdowns + stat cards)
   const fetchOverview = async () => {
@@ -251,43 +265,13 @@ function DashboardContent({ userName }: { userName: string | null }) {
     }
   }
 
-  const fetchPaginated = async (tab: Tab, page: number) => {
-    const token = await getToken()
-    if (tab === 'states') {
-      const res = await fetchStatesPaginated(page, PER_PAGE, token)
-      setStatesPaginated(res)
-    } else if (tab === 'sublocations') {
-      const res = await fetchSublocationsPaginated(page, PER_PAGE, token)
-      setSubsPaginated(res)
-    } else {
-      const res = await fetchVideosPaginated(page, PER_PAGE, token)
-      setVideosPaginated(res)
-    }
-  }
-
   const refreshAll = async () => {
     await refreshData()
-    if (activeTab !== 'streams') {
-      await fetchPaginated(activeTab, currentPage)
-    }
   }
-
-  const currentPage =
-    activeTab === 'states'
-      ? statesPage
-      : activeTab === 'sublocations'
-        ? subsPage
-        : videosPage
 
   useEffect(() => {
     fetchOverview()
   }, [])
-
-  useEffect(() => {
-    if (activeTab !== 'streams') {
-      fetchPaginated(activeTab, currentPage)
-    }
-  }, [activeTab, statesPage, subsPage, videosPage])
 
   const tabCounts: Record<Tab, number> = {
     cameras: allVideos.length,
@@ -430,11 +414,9 @@ function DashboardContent({ userName }: { userName: string | null }) {
       >
         {activeTab === 'cameras' && (
           <CamerasPanel
+            videos={allVideos}
             states={allStates}
             sublocations={allSublocations}
-            paginated={videosPaginated}
-            page={videosPage}
-            setPage={setVideosPage}
             getToken={getToken}
             onSuccess={refreshAll}
             loading={dataLoading}
@@ -442,9 +424,7 @@ function DashboardContent({ userName }: { userName: string | null }) {
         )}
         {activeTab === 'states' && (
           <StatesPanel
-            paginated={statesPaginated}
-            page={statesPage}
-            setPage={setStatesPage}
+            states={allStates}
             getToken={getToken}
             onSuccess={refreshAll}
             loading={dataLoading}
@@ -452,10 +432,8 @@ function DashboardContent({ userName }: { userName: string | null }) {
         )}
         {activeTab === 'sublocations' && (
           <SublocationsPanel
+            sublocations={allSublocations}
             states={allStates}
-            paginated={subsPaginated}
-            page={subsPage}
-            setPage={setSubsPage}
             getToken={getToken}
             onSuccess={refreshAll}
             loading={dataLoading}
@@ -479,20 +457,16 @@ function DashboardContent({ userName }: { userName: string | null }) {
    ════════════════════════════════════════════════ */
 
 function CamerasPanel({
+  videos: allVideos,
   states,
   sublocations,
-  paginated,
-  page,
-  setPage,
   getToken,
   onSuccess,
   loading,
 }: {
+  videos: Array<Video>
   states: Array<State>
   sublocations: Array<Sublocation>
-  paginated: PaginatedResponse<Video> | null
-  page: number
-  setPage: (p: number) => void
   getToken: () => Promise<string | null>
   onSuccess: () => void
   loading: boolean
@@ -516,9 +490,40 @@ function CamerasPanel({
   const [deleting, setDeleting] = useState(false)
   const [editing, setEditing] = useState<Video | null>(null)
 
+  // Search + sort + client-side pagination
+  const [search, setSearch] = useState('')
+  const [sortKey, setSortKey] = useState('a-z')
+  const [page, setPage] = useState(1)
+
+  const filtered = useMemo(() => {
+    let result = [...allVideos]
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      result = result.filter(
+        (v) =>
+          v.title.toLowerCase().includes(q) ||
+          (v.state_name && v.state_name.toLowerCase().includes(q)) ||
+          (v.sublocation_name && v.sublocation_name.toLowerCase().includes(q)),
+      )
+    }
+    switch (sortKey) {
+      case 'a-z': result.sort((a, b) => a.title.localeCompare(b.title)); break
+      case 'z-a': result.sort((a, b) => b.title.localeCompare(a.title)); break
+      case 'newest': result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); break
+      case 'oldest': result.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); break
+    }
+    return result
+  }, [allVideos, search, sortKey])
+
+  const total = filtered.length
+  const totalPages = Math.ceil(total / PER_PAGE)
+  const safePage = Math.min(page, Math.max(1, totalPages || 1))
+  const videos = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE)
+
+  const handleSearch = (v: string) => { setSearch(v); setPage(1) }
+  const handleSort = (v: string) => { setSortKey(v); setPage(1) }
+
   const filteredSubs = sublocations.filter((s) => s.state_id === stateId)
-  const videos = paginated?.data ?? []
-  const total = paginated?.total ?? 0
 
   const handleDelete = async () => {
     if (!confirmDelete) return
@@ -650,17 +655,45 @@ function CamerasPanel({
         )}
 
         {/* List */}
-        <DataList loading={loading} empty={videos.length === 0} emptyIcon={Film} emptyText="No cameras yet">
-          {videos.map((v, i) => (
-            <VideoRow
-              key={v.video_id}
-              video={v}
-              index={i}
-              onEdit={() => setEditing(v)}
-              onDelete={() => setConfirmDelete({ id: v.video_id, name: v.title })}
-            />
-          ))}
-          <PaginationBar page={page} perPage={PER_PAGE} total={total} onPageChange={setPage} />
+        <DataList
+          loading={loading}
+          empty={allVideos.length === 0}
+          emptyIcon={Film}
+          emptyText="No cameras yet"
+          toolbar={
+            !loading && allVideos.length > 0 ? (
+              <ListToolbar
+                search={search}
+                onSearchChange={handleSearch}
+                sortKey={sortKey}
+                onSortChange={handleSort}
+                resultCount={total}
+                label="cameras"
+                sortOptions={ENTITY_SORT_OPTIONS}
+              />
+            ) : undefined
+          }
+        >
+          {total === 0 && search ? (
+            <div className="py-8 text-center">
+              <p className="mb-0 text-sm text-subtext0">
+                No cameras matching &ldquo;{search}&rdquo;
+              </p>
+            </div>
+          ) : (
+            <>
+              {videos.map((v, i) => (
+                <VideoRow
+                  key={v.video_id}
+                  video={v}
+                  index={i}
+                  onEdit={() => setEditing(v)}
+                  onDelete={() => setConfirmDelete({ id: v.video_id, name: v.title })}
+                />
+              ))}
+              <PaginationBar page={safePage} perPage={PER_PAGE} total={total} onPageChange={setPage} />
+            </>
+          )}
         </DataList>
       </div>
 
@@ -691,16 +724,12 @@ function CamerasPanel({
    ════════════════════════════════════════════════ */
 
 function StatesPanel({
-  paginated,
-  page,
-  setPage,
+  states: allStates,
   getToken,
   onSuccess,
   loading,
 }: {
-  paginated: PaginatedResponse<State> | null
-  page: number
-  setPage: (p: number) => void
+  states: Array<State>
   getToken: () => Promise<string | null>
   onSuccess: () => void
   loading: boolean
@@ -720,8 +749,37 @@ function StatesPanel({
   const [deleting, setDeleting] = useState(false)
   const [editing, setEditing] = useState<State | null>(null)
 
-  const states = paginated?.data ?? []
-  const total = paginated?.total ?? 0
+  // Search + sort + client-side pagination
+  const [search, setSearch] = useState('')
+  const [sortKey, setSortKey] = useState('a-z')
+  const [page, setPage] = useState(1)
+
+  const filtered = useMemo(() => {
+    let result = [...allStates]
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      result = result.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          (s.description && s.description.toLowerCase().includes(q)),
+      )
+    }
+    switch (sortKey) {
+      case 'a-z': result.sort((a, b) => a.name.localeCompare(b.name)); break
+      case 'z-a': result.sort((a, b) => b.name.localeCompare(a.name)); break
+      case 'newest': result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); break
+      case 'oldest': result.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); break
+    }
+    return result
+  }, [allStates, search, sortKey])
+
+  const total = filtered.length
+  const totalPages = Math.ceil(total / PER_PAGE)
+  const safePage = Math.min(page, Math.max(1, totalPages || 1))
+  const states = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE)
+
+  const handleSearch = (v: string) => { setSearch(v); setPage(1) }
+  const handleSort = (v: string) => { setSortKey(v); setPage(1) }
 
   const handleDelete = async () => {
     if (!confirmDelete) return
@@ -784,17 +842,45 @@ function StatesPanel({
           </CreatePanel>
         )}
 
-        <DataList loading={loading} empty={states.length === 0} emptyIcon={MapPin} emptyText="No states yet">
-          {states.map((s, i) => (
-            <StateRow
-              key={s.state_id}
-              state={s}
-              index={i}
-              onEdit={() => setEditing(s)}
-              onDelete={() => setConfirmDelete({ slug: s.slug, name: s.name })}
-            />
-          ))}
-          <PaginationBar page={page} perPage={PER_PAGE} total={total} onPageChange={setPage} />
+        <DataList
+          loading={loading}
+          empty={allStates.length === 0}
+          emptyIcon={MapPin}
+          emptyText="No states yet"
+          toolbar={
+            !loading && allStates.length > 0 ? (
+              <ListToolbar
+                search={search}
+                onSearchChange={handleSearch}
+                sortKey={sortKey}
+                onSortChange={handleSort}
+                resultCount={total}
+                label="states"
+                sortOptions={ENTITY_SORT_OPTIONS}
+              />
+            ) : undefined
+          }
+        >
+          {total === 0 && search ? (
+            <div className="py-8 text-center">
+              <p className="mb-0 text-sm text-subtext0">
+                No states matching &ldquo;{search}&rdquo;
+              </p>
+            </div>
+          ) : (
+            <>
+              {states.map((s, i) => (
+                <StateRow
+                  key={s.state_id}
+                  state={s}
+                  index={i}
+                  onEdit={() => setEditing(s)}
+                  onDelete={() => setConfirmDelete({ slug: s.slug, name: s.name })}
+                />
+              ))}
+              <PaginationBar page={safePage} perPage={PER_PAGE} total={total} onPageChange={setPage} />
+            </>
+          )}
         </DataList>
       </div>
 
@@ -813,18 +899,14 @@ function StatesPanel({
    ════════════════════════════════════════════════ */
 
 function SublocationsPanel({
+  sublocations: allSublocations,
   states,
-  paginated,
-  page,
-  setPage,
   getToken,
   onSuccess,
   loading,
 }: {
+  sublocations: Array<Sublocation>
   states: Array<State>
-  paginated: PaginatedResponse<Sublocation> | null
-  page: number
-  setPage: (p: number) => void
   getToken: () => Promise<string | null>
   onSuccess: () => void
   loading: boolean
@@ -842,8 +924,38 @@ function SublocationsPanel({
   const [deleting, setDeleting] = useState(false)
   const [editing, setEditing] = useState<Sublocation | null>(null)
 
-  const sublocations = paginated?.data ?? []
-  const total = paginated?.total ?? 0
+  // Search + sort + client-side pagination
+  const [search, setSearch] = useState('')
+  const [sortKey, setSortKey] = useState('a-z')
+  const [page, setPage] = useState(1)
+
+  const filtered = useMemo(() => {
+    let result = [...allSublocations]
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      result = result.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          (s.state_name && s.state_name.toLowerCase().includes(q)) ||
+          (s.description && s.description.toLowerCase().includes(q)),
+      )
+    }
+    switch (sortKey) {
+      case 'a-z': result.sort((a, b) => a.name.localeCompare(b.name)); break
+      case 'z-a': result.sort((a, b) => b.name.localeCompare(a.name)); break
+      case 'newest': result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); break
+      case 'oldest': result.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); break
+    }
+    return result
+  }, [allSublocations, search, sortKey])
+
+  const total = filtered.length
+  const totalPages = Math.ceil(total / PER_PAGE)
+  const safePage = Math.min(page, Math.max(1, totalPages || 1))
+  const sublocations = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE)
+
+  const handleSearch = (v: string) => { setSearch(v); setPage(1) }
+  const handleSort = (v: string) => { setSortKey(v); setPage(1) }
 
   const handleDelete = async () => {
     if (!confirmDelete) return
@@ -916,17 +1028,45 @@ function SublocationsPanel({
           </CreatePanel>
         )}
 
-        <DataList loading={loading} empty={sublocations.length === 0} emptyIcon={Landmark} emptyText="No sublocations yet">
-          {sublocations.map((s, i) => (
-            <SublocationRow
-              key={s.sublocation_id}
-              sublocation={s}
-              index={i}
-              onEdit={() => setEditing(s)}
-              onDelete={() => setConfirmDelete({ id: s.sublocation_id, name: s.name })}
-            />
-          ))}
-          <PaginationBar page={page} perPage={PER_PAGE} total={total} onPageChange={setPage} />
+        <DataList
+          loading={loading}
+          empty={allSublocations.length === 0}
+          emptyIcon={Landmark}
+          emptyText="No sublocations yet"
+          toolbar={
+            !loading && allSublocations.length > 0 ? (
+              <ListToolbar
+                search={search}
+                onSearchChange={handleSearch}
+                sortKey={sortKey}
+                onSortChange={handleSort}
+                resultCount={total}
+                label="locations"
+                sortOptions={ENTITY_SORT_OPTIONS}
+              />
+            ) : undefined
+          }
+        >
+          {total === 0 && search ? (
+            <div className="py-8 text-center">
+              <p className="mb-0 text-sm text-subtext0">
+                No locations matching &ldquo;{search}&rdquo;
+              </p>
+            </div>
+          ) : (
+            <>
+              {sublocations.map((s, i) => (
+                <SublocationRow
+                  key={s.sublocation_id}
+                  sublocation={s}
+                  index={i}
+                  onEdit={() => setEditing(s)}
+                  onDelete={() => setConfirmDelete({ id: s.sublocation_id, name: s.name })}
+                />
+              ))}
+              <PaginationBar page={safePage} perPage={PER_PAGE} total={total} onPageChange={setPage} />
+            </>
+          )}
         </DataList>
       </div>
 
@@ -945,7 +1085,7 @@ function SublocationsPanel({
    ════════════════════════════════════════════════ */
 
 function StreamsPanel({
-  streams,
+  streams: allStreams,
   getToken,
   onSuccess,
   loading,
@@ -967,6 +1107,40 @@ function StreamsPanel({
   const [deleting, setDeleting] = useState(false)
   const [restarting, setRestarting] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
+
+  // Search + sort
+  const [search, setSearch] = useState('')
+  const [sortKey, setSortKey] = useState('a-z')
+
+  const filtered = useMemo(() => {
+    let result = [...allStreams]
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      result = result.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          s.streamId.toLowerCase().includes(q),
+      )
+    }
+    switch (sortKey) {
+      case 'a-z': result.sort((a, b) => a.name.localeCompare(b.name)); break
+      case 'z-a': result.sort((a, b) => b.name.localeCompare(a.name)); break
+      case 'running':
+        result.sort((a, b) => {
+          if (a.status === 'running' && b.status !== 'running') return -1
+          if (a.status !== 'running' && b.status === 'running') return 1
+          return a.name.localeCompare(b.name)
+        })
+        break
+    }
+    return result
+  }, [allStreams, search, sortKey])
+
+  const streams = filtered
+  const total = filtered.length
+
+  const handleSearch = (v: string) => { setSearch(v) }
+  const handleSort = (v: string) => { setSortKey(v) }
 
   const handleDelete = async () => {
     if (!confirmDelete) return
@@ -1056,19 +1230,47 @@ function StreamsPanel({
           </CreatePanel>
         )}
 
-        <DataList loading={loading} empty={streams.length === 0} emptyIcon={Radio} emptyText="No streams yet">
-          {streams.map((s, i) => (
-            <StreamRow
-              key={s.streamId}
-              stream={s}
-              index={i}
-              restarting={restarting === s.streamId}
-              copied={copied === s.streamId}
-              onRestart={() => handleRestart(s.streamId)}
-              onCopy={() => handleCopy(s.hlsUrl, s.streamId)}
-              onDelete={() => setConfirmDelete({ id: s.streamId, name: s.name })}
-            />
-          ))}
+        <DataList
+          loading={loading}
+          empty={allStreams.length === 0}
+          emptyIcon={Radio}
+          emptyText="No streams yet"
+          toolbar={
+            !loading && allStreams.length > 0 ? (
+              <ListToolbar
+                search={search}
+                onSearchChange={handleSearch}
+                sortKey={sortKey}
+                onSortChange={handleSort}
+                resultCount={total}
+                label="streams"
+                sortOptions={STREAM_SORT_OPTIONS}
+              />
+            ) : undefined
+          }
+        >
+          {total === 0 && search ? (
+            <div className="py-8 text-center">
+              <p className="mb-0 text-sm text-subtext0">
+                No streams matching &ldquo;{search}&rdquo;
+              </p>
+            </div>
+          ) : (
+            <>
+              {streams.map((s, i) => (
+                <StreamRow
+                  key={s.streamId}
+                  stream={s}
+                  index={i}
+                  restarting={restarting === s.streamId}
+                  copied={copied === s.streamId}
+                  onRestart={() => handleRestart(s.streamId)}
+                  onCopy={() => handleCopy(s.hlsUrl, s.streamId)}
+                  onDelete={() => setConfirmDelete({ id: s.streamId, name: s.name })}
+                />
+              ))}
+            </>
+          )}
         </DataList>
 
         {/* Stream-level status banner (for restart/delete feedback) */}
@@ -1245,16 +1447,19 @@ function DataList({
   empty,
   emptyIcon: EmptyIcon,
   emptyText,
+  toolbar,
   children,
 }: {
   loading: boolean
   empty: boolean
   emptyIcon: typeof Film
   emptyText: string
+  toolbar?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-overlay0/60 bg-surface0">
+      {toolbar}
       {loading ? (
         <ListSkeleton />
       ) : empty ? (
@@ -1267,6 +1472,86 @@ function DataList({
       ) : (
         <div className="divide-y divide-overlay0/30">{children}</div>
       )}
+    </div>
+  )
+}
+
+/* ════════════════════════════════════════════════
+   Shared — List Toolbar (search + sort)
+   ════════════════════════════════════════════════ */
+
+function ListToolbar({
+  search,
+  onSearchChange,
+  sortKey,
+  onSortChange,
+  resultCount,
+  label,
+  sortOptions,
+}: {
+  search: string
+  onSearchChange: (v: string) => void
+  sortKey: string
+  onSortChange: (v: string) => void
+  resultCount: number
+  label: string
+  sortOptions: Array<{ value: string; label: string; icon: typeof ArrowDownAZ }>
+}) {
+  return (
+    <div className="flex items-center gap-2 border-b border-overlay0/30 px-4 py-2.5 sm:px-5">
+      {/* Search */}
+      <div className="relative min-w-0 flex-1">
+        <Search
+          size={13}
+          className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-overlay2"
+        />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder={`Search ${label}...`}
+          className="w-full rounded-lg border border-overlay0/50 bg-base py-1.5 pr-7 pl-8 text-xs text-text placeholder:text-overlay1 transition-colors duration-150 focus:border-accent focus:outline-none"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => onSearchChange('')}
+            className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-0.5 text-overlay2 hover:text-text"
+            aria-label="Clear search"
+          >
+            <X size={11} />
+          </button>
+        )}
+      </div>
+
+      {/* Sort */}
+      <div className="flex items-center gap-0.5 rounded-lg border border-overlay0/50 bg-base p-0.5">
+        {sortOptions.map((opt) => {
+          const Icon = opt.icon
+          const isActive = sortKey === opt.value
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onSortChange(opt.value)}
+              className={`flex items-center gap-1 rounded-md px-1.5 py-1 font-mono text-[10px] transition-colors duration-150 ${
+                isActive
+                  ? 'bg-accent/12 text-accent'
+                  : 'text-overlay2 hover:text-text'
+              }`}
+              title={`Sort: ${opt.label}`}
+            >
+              <Icon size={11} />
+              <span className="hidden lg:inline">{opt.label}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Count */}
+      <span className="shrink-0 font-mono text-[10px] tabular-nums text-overlay2">
+        {resultCount}
+      </span>
     </div>
   )
 }
