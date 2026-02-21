@@ -1470,7 +1470,7 @@ function DataList({
           <p className="mb-0 max-w-[220px] text-sm text-subtext0">{emptyText}</p>
         </div>
       ) : (
-        <div className="divide-y divide-overlay0/30">{children}</div>
+        <div className="divide-y divide-overlay0">{children}</div>
       )}
     </div>
   )
@@ -1558,15 +1558,15 @@ function ListToolbar({
 
 function ListSkeleton() {
   return (
-    <div className="divide-y divide-overlay0/20">
+    <div className="divide-y divide-overlay0/40">
       {[0, 1, 2, 3, 4].map((i) => (
-        <div key={i} className="flex items-center gap-4 px-4 py-3.5 sm:px-5">
-          <div className="h-9 w-9 shrink-0 animate-pulse rounded-lg bg-surface1" />
+        <div key={i} className="flex items-center gap-4 px-4 py-4 sm:px-5">
+          <div className="h-10 w-10 shrink-0 animate-pulse rounded-xl bg-surface1" />
           <div className="flex-1 space-y-2">
-            <div className="h-4 w-32 animate-pulse rounded bg-surface1" />
-            <div className="h-3 w-20 animate-pulse rounded bg-surface1" />
+            <div className="h-4 w-36 animate-pulse rounded bg-surface1" />
+            <div className="h-3 w-24 animate-pulse rounded bg-surface1" />
           </div>
-          <div className="h-5 w-14 animate-pulse rounded-full bg-surface1" />
+          <div className="h-6 w-16 animate-pulse rounded-md bg-surface1" />
         </div>
       ))}
     </div>
@@ -1642,31 +1642,35 @@ function VideoRow({
 
   return (
     <div
-      className="group flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-surface1/40 sm:gap-4 sm:px-5"
+      className="group flex items-center gap-4 px-4 py-4 transition-colors duration-150 hover:bg-surface1/50 sm:px-5"
       style={staggerStyle(index)}
     >
       {/* Icon */}
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/8">
-        <Film size={16} className="text-accent/70" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10">
+        <Film size={18} className="text-accent" />
       </div>
 
       {/* Info */}
       <div className="min-w-0 flex-1">
-        <p className="mb-0 truncate text-sm font-medium text-text">{video.title}</p>
-        <p className="mb-0 truncate text-xs text-subtext0">
-          {video.state_name}
-          {video.sublocation_name ? ` \u00B7 ${video.sublocation_name}` : ''}
+        <p className="mb-0 truncate font-display text-sm font-semibold text-text sm:text-base">
+          {video.title}
         </p>
+        <div className="mt-0.5 flex items-center gap-2">
+          <span className="truncate text-xs text-subtext0">
+            {video.state_name}
+            {video.sublocation_name ? ` \u00B7 ${video.sublocation_name}` : ''}
+          </span>
+          <span className="shrink-0 rounded bg-surface2 px-1.5 py-px font-mono text-[11px] text-subtext0">
+            {typeLabel}
+          </span>
+        </div>
       </div>
 
-      {/* Badges */}
-      <span className="hidden shrink-0 rounded-md bg-surface1 px-2 py-0.5 font-mono text-[10px] font-medium text-subtext0 sm:inline">
-        {typeLabel}
-      </span>
+      {/* Status */}
       <StatusDot active={isActive} label={isActive ? 'Live' : 'Off'} />
 
       {/* Actions */}
-      <div className="flex shrink-0 items-center gap-0.5 opacity-40 transition-opacity duration-150 group-hover:opacity-100">
+      <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
         <ActionBtn icon={Pencil} onClick={onEdit} label="Edit" />
         <ActionBtn icon={Trash2} onClick={onDelete} label="Delete" variant="danger" />
       </div>
@@ -1687,20 +1691,24 @@ function StateRow({
 }) {
   return (
     <div
-      className="group flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-surface1/40 sm:gap-4 sm:px-5"
+      className="group flex items-center gap-4 px-4 py-4 transition-colors duration-150 hover:bg-surface1/50 sm:px-5"
       style={staggerStyle(index)}
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/8">
-        <MapPin size={16} className="text-accent/70" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10">
+        <MapPin size={18} className="text-accent" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="mb-0 truncate text-sm font-medium text-text">{state.name}</p>
-        <p className="mb-0 text-xs text-subtext0">{timeAgo(state.created_at)}</p>
+        <p className="mb-0 truncate font-display text-sm font-semibold text-text sm:text-base">
+          {state.name}
+        </p>
+        <div className="mt-0.5 flex items-center gap-2">
+          <span className="text-xs text-subtext0">{timeAgo(state.created_at)}</span>
+          <span className="shrink-0 rounded bg-surface2 px-1.5 py-px font-mono text-[11px] text-subtext0">
+            {state.video_count} cam{state.video_count !== 1 ? 's' : ''}
+          </span>
+        </div>
       </div>
-      <span className="shrink-0 rounded-md bg-surface1 px-2 py-0.5 font-mono text-[10px] font-medium text-subtext0">
-        {state.video_count} cam{state.video_count !== 1 ? 's' : ''}
-      </span>
-      <div className="flex shrink-0 items-center gap-0.5 opacity-40 transition-opacity duration-150 group-hover:opacity-100">
+      <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
         <ActionBtn icon={Pencil} onClick={onEdit} label="Edit" />
         <ActionBtn icon={Trash2} onClick={onDelete} label="Delete" variant="danger" />
       </div>
@@ -1721,20 +1729,24 @@ function SublocationRow({
 }) {
   return (
     <div
-      className="group flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-surface1/40 sm:gap-4 sm:px-5"
+      className="group flex items-center gap-4 px-4 py-4 transition-colors duration-150 hover:bg-surface1/50 sm:px-5"
       style={staggerStyle(index)}
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/8">
-        <Landmark size={16} className="text-accent/70" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10">
+        <Landmark size={18} className="text-accent" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="mb-0 truncate text-sm font-medium text-text">{sublocation.name}</p>
-        <p className="mb-0 truncate text-xs text-subtext0">{sublocation.state_name}</p>
+        <p className="mb-0 truncate font-display text-sm font-semibold text-text sm:text-base">
+          {sublocation.name}
+        </p>
+        <div className="mt-0.5 flex items-center gap-2">
+          <span className="truncate text-xs text-subtext0">{sublocation.state_name}</span>
+          <span className="shrink-0 rounded bg-surface2 px-1.5 py-px font-mono text-[11px] text-subtext0">
+            {sublocation.video_count} cam{sublocation.video_count !== 1 ? 's' : ''}
+          </span>
+        </div>
       </div>
-      <span className="shrink-0 rounded-md bg-surface1 px-2 py-0.5 font-mono text-[10px] font-medium text-subtext0">
-        {sublocation.video_count} cam{sublocation.video_count !== 1 ? 's' : ''}
-      </span>
-      <div className="flex shrink-0 items-center gap-0.5 opacity-40 transition-opacity duration-150 group-hover:opacity-100">
+      <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
         <ActionBtn icon={Pencil} onClick={onEdit} label="Edit" />
         <ActionBtn icon={Trash2} onClick={onDelete} label="Delete" variant="danger" />
       </div>
@@ -1775,16 +1787,18 @@ function StreamRow({
 
   return (
     <div
-      className="group flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-surface1/40 sm:gap-4 sm:px-5"
+      className="group flex items-center gap-4 px-4 py-4 transition-colors duration-150 hover:bg-surface1/50 sm:px-5"
       style={staggerStyle(index)}
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/8">
-        <Radio size={16} className="text-accent/70" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10">
+        <Radio size={18} className="text-accent" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="mb-0 truncate text-sm font-medium text-text">{stream.name}</p>
-        <p className="mb-0 truncate font-mono text-[11px] text-subtext0">
+        <p className="mb-0 truncate font-display text-sm font-semibold text-text sm:text-base">
+          {stream.name}
+        </p>
+        <p className="mb-0 mt-0.5 truncate font-mono text-xs text-subtext0">
           {runtime}
           {stream.fps ? ` \u00B7 ${stream.fps.toFixed(1)} fps` : ''}
           {stream.bitrateKbit
@@ -1794,32 +1808,38 @@ function StreamRow({
       </div>
 
       {/* Status */}
-      <span className={`inline-flex shrink-0 items-center gap-1.5 text-xs font-medium ${statusColor}`}>
+      <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${
+        isRunning
+          ? 'bg-teal/10 text-teal'
+          : isFailed
+            ? 'bg-live/10 text-live'
+            : 'bg-surface1 text-subtext0'
+      }`}>
         <span
-          className={`h-1.5 w-1.5 rounded-full ${dotColor}`}
+          className={`h-2 w-2 rounded-full ${dotColor}`}
           style={isRunning ? { animation: 'pulse-live 2s ease-in-out infinite' } : undefined}
         />
-        <span className="hidden sm:inline">{stream.status}</span>
+        {stream.status}
       </span>
 
       {/* Actions */}
-      <div className="flex shrink-0 items-center gap-0.5 opacity-40 transition-opacity duration-150 group-hover:opacity-100">
+      <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
         <button
           type="button"
           onClick={onCopy}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-subtext0 transition-colors duration-150 hover:bg-accent/10 hover:text-accent"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-subtext0 transition-colors duration-150 hover:bg-accent/10 hover:text-accent"
           title={copied ? 'Copied!' : 'Copy HLS URL'}
         >
-          {copied ? <Check size={14} className="text-teal" /> : <Copy size={14} />}
+          {copied ? <Check size={15} className="text-teal" /> : <Copy size={15} />}
         </button>
         <button
           type="button"
           onClick={onRestart}
           disabled={restarting}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-subtext0 transition-colors duration-150 hover:bg-accent/10 hover:text-accent disabled:pointer-events-none disabled:opacity-40"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-subtext0 transition-colors duration-150 hover:bg-accent/10 hover:text-accent disabled:pointer-events-none disabled:opacity-40"
           title="Restart stream"
         >
-          <RefreshCw size={14} className={restarting ? 'animate-spin' : ''} />
+          <RefreshCw size={15} className={restarting ? 'animate-spin' : ''} />
         </button>
         <ActionBtn icon={Trash2} onClick={onDelete} label="Delete" variant="danger" />
       </div>
@@ -1834,13 +1854,15 @@ function StreamRow({
 function StatusDot({ active, label }: { active: boolean; label: string }) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1.5 text-xs font-medium ${active ? 'text-teal' : 'text-subtext0'}`}
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${
+        active ? 'bg-teal/10 text-teal' : 'bg-surface1 text-subtext0'
+      }`}
     >
       <span
-        className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-teal' : 'bg-overlay2'}`}
+        className={`h-2 w-2 rounded-full ${active ? 'bg-teal' : 'bg-overlay2'}`}
         style={active ? { animation: 'pulse-live 2s ease-in-out infinite' } : undefined}
       />
-      <span className="hidden sm:inline">{label}</span>
+      {label}
     </span>
   )
 }
@@ -1860,7 +1882,7 @@ function ActionBtn({
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-7 w-7 items-center justify-center rounded-md text-subtext0 transition-colors duration-150 ${
+      className={`flex h-8 w-8 items-center justify-center rounded-lg text-subtext0 transition-colors duration-150 ${
         variant === 'danger'
           ? 'hover:bg-live/10 hover:text-live'
           : 'hover:bg-accent/10 hover:text-accent'
@@ -1868,7 +1890,7 @@ function ActionBtn({
       title={label}
       aria-label={label}
     >
-      <Icon size={14} />
+      <Icon size={15} />
     </button>
   )
 }
