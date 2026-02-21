@@ -1,14 +1,18 @@
 package handler
 
 import (
+	"time"
+
 	"github.com/brandon-relentnet/nationcam/api/internal/cache"
 	mw "github.com/brandon-relentnet/nationcam/api/internal/middleware"
+	"github.com/brandon-relentnet/nationcam/api/internal/restreamer"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // NewRouter builds the Chi router with all routes and middleware.
-func NewRouter(pool *pgxpool.Pool, c *cache.Cache, auth *mw.Auth, corsOrigins []string) *chi.Mux {
+// rc may be nil if Restreamer is not configured (stream routes are not mounted).
+func NewRouter(pool *pgxpool.Pool, c *cache.Cache, auth *mw.Auth, corsOrigins []string, rc *restreamer.Client, streamerAPIKey string) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Global middleware.
@@ -44,6 +48,19 @@ func NewRouter(pool *pgxpool.Pool, c *cache.Cache, auth *mw.Auth, corsOrigins []
 
 	// Stream proxy — proxies external HLS manifests/segments to bypass CORS.
 	r.Get("/stream-proxy", StreamProxy())
+
+	// Streams (Restreamer proxy) — only mounted if configured.
+	if rc != nil && streamerAPIKey != "" {
+		rl := mw.NewRateLimiter(10, time.Minute)
+		r.Route("/streams", func(r chi.Router) {
+			r.Use(mw.RequireAPIKey(streamerAPIKey))
+			r.Get("/", ListStreams(rc))
+			r.With(mw.RateLimit(rl)).Post("/", CreateStream(rc))
+			r.Get("/{id}", GetStream(rc))
+			r.Delete("/{id}", DeleteStream(rc))
+			r.Post("/{id}/restart", RestartStream(rc))
+		})
+	}
 
 	return r
 }

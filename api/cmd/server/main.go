@@ -14,6 +14,7 @@ import (
 	"github.com/brandon-relentnet/nationcam/api/internal/config"
 	"github.com/brandon-relentnet/nationcam/api/internal/handler"
 	"github.com/brandon-relentnet/nationcam/api/internal/middleware"
+	"github.com/brandon-relentnet/nationcam/api/internal/restreamer"
 	dbschema "github.com/brandon-relentnet/nationcam/api/sql"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -73,8 +74,15 @@ func run() error {
 	// ── Auth middleware ─────────────────────────────────────────────
 	auth := middleware.NewAuth(cfg.LogtoEndpoint)
 
+	// ── Restreamer client (optional) ───────────────────────────────
+	var rc *restreamer.Client
+	if cfg.RestreamerURL != "" {
+		rc = restreamer.NewClient(cfg.RestreamerURL, cfg.RestreamerUser, cfg.RestreamerPass)
+		slog.Info("restreamer client configured", "url", cfg.RestreamerURL)
+	}
+
 	// ── Build router ───────────────────────────────────────────────
-	router := handler.NewRouter(pool, redisCache, auth, cfg.CORSOrigins)
+	router := handler.NewRouter(pool, redisCache, auth, cfg.CORSOrigins, rc, cfg.StreamerAPIKey)
 
 	// ── HTTP server ────────────────────────────────────────────────
 	srv := &http.Server{

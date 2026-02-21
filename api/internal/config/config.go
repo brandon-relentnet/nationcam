@@ -8,11 +8,17 @@ import (
 
 // Config holds all application configuration loaded from environment variables.
 type Config struct {
-	Port           string
-	DatabaseURL    string
-	RedisURL       string
+	Port          string
+	DatabaseURL   string
+	RedisURL      string
 	LogtoEndpoint string
 	CORSOrigins   []string
+
+	// Restreamer (optional — empty RestreamerURL disables stream management).
+	RestreamerURL  string
+	RestreamerUser string
+	RestreamerPass string
+	StreamerAPIKey string
 }
 
 // Load reads configuration from environment variables with sensible defaults.
@@ -36,6 +42,11 @@ func Load() (*Config, error) {
 		RedisURL:      envOr("REDIS_URL", "redis://localhost:6379/0"),
 		LogtoEndpoint: envOr("LOGTO_ENDPOINT", "http://localhost:3301"),
 		CORSOrigins:   corsList,
+
+		RestreamerURL:  os.Getenv("RESTREAMER_URL"),
+		RestreamerUser: os.Getenv("RESTREAMER_USER"),
+		RestreamerPass: os.Getenv("RESTREAMER_PASS"),
+		StreamerAPIKey: os.Getenv("STREAMER_API_KEY"),
 	}, nil
 }
 
