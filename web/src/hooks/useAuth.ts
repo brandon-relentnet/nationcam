@@ -1,5 +1,5 @@
 import { useLogto } from '@logto/react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { IdTokenClaims } from '@logto/react'
 
 const API_RESOURCE =
@@ -25,6 +25,12 @@ function claimsToUserInfo(claims: IdTokenClaims): UserInfo {
 
 /**
  * Thin wrapper around @logto/react that exposes auth state, user info, and helpers.
+ *
+ * IMPORTANT: The Logto SDK wraps every method (getAccessToken, getIdTokenClaims,
+ * etc.) in a proxy that calls setIsLoading(true/false). This means ANY call to
+ * these methods causes isLoading to flicker, which can unmount components that
+ * conditionally render based on isLoading. We use a ref guard to ensure
+ * getIdTokenClaims is only called once per auth session.
  */
 export function useAuth() {
   const {
@@ -37,22 +43,25 @@ export function useAuth() {
   } = useLogto()
 
   const [user, setUser] = useState<UserInfo | null>(null)
+  const claimsFetched = useRef(false)
 
   // When auth state settles, pull user info from the cached ID token claims.
+  // The ref guard prevents re-calling getIdTokenClaims on isLoading flickers
+  // (each call triggers setIsLoading(true/false) in the Logto SDK proxy).
   useEffect(() => {
     if (isLoading) return
     if (!isAuthenticated) {
       setUser(null)
+      claimsFetched.current = false
       return
     }
-    let cancelled = false
+    if (claimsFetched.current) return
+    claimsFetched.current = true
+
     getIdTokenClaims().then((claims) => {
-      if (cancelled || !claims) return
+      if (!claims) return
       setUser(claimsToUserInfo(claims))
     })
-    return () => {
-      cancelled = true
-    }
   }, [isAuthenticated, isLoading, getIdTokenClaims])
 
   const login = useCallback(() => {

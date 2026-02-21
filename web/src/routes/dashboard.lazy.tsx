@@ -1,5 +1,5 @@
 import { createLazyFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   AlertCircle,
   Check,
@@ -93,7 +93,16 @@ export const Route = createLazyFileRoute('/dashboard')({
 function DashboardPage() {
   const { isAuthenticated, isLoading, user, login } = useAuth()
 
-  if (isLoading) {
+  // Track whether the initial auth check has completed. The Logto SDK's
+  // proxy wraps every method with setIsLoading(true/false), so calling
+  // getAccessToken or getIdTokenClaims causes isLoading to flicker.
+  // Without this guard, each flicker unmounts DashboardContent (which
+  // triggers fetchOverview → getToken → getAccessToken → isLoading
+  // flicker → unmount → remount → infinite loop).
+  const authSettled = useRef(false)
+  if (!isLoading) authSettled.current = true
+
+  if (!authSettled.current) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div
