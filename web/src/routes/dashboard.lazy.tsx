@@ -198,6 +198,34 @@ function DashboardContent({ userName }: { userName: string | null }) {
     }
   }
 
+  // Silent refresh — re-fetches data without showing skeleton loaders.
+  // Used after create/update/delete so the UI stays interactive.
+  const refreshData = async () => {
+    try {
+      const token = await getToken()
+      const [statesData, videosData] = await Promise.all([
+        fetchStates(),
+        fetchVideos(),
+      ])
+      setAllStates(statesData)
+      setAllVideos(videosData)
+
+      const allSubs = await Promise.all(
+        statesData.map((s) => fetchSublocationsByState(s.slug)),
+      )
+      setAllSublocations(allSubs.flat())
+
+      try {
+        const streamsData = await fetchStreams(token)
+        setAllStreams(Array.isArray(streamsData) ? streamsData : [])
+      } catch {
+        setAllStreams([])
+      }
+    } catch {
+      // Silent refresh — don't crash the page on failure
+    }
+  }
+
   // Fetch paginated data for current tab
   const fetchPaginated = async (tab: Tab, page: number) => {
     const token = await getToken()
@@ -215,7 +243,7 @@ function DashboardContent({ userName }: { userName: string | null }) {
 
   // Refresh everything (after create/update/delete)
   const refreshAll = async () => {
-    await fetchOverview()
+    await refreshData()
     if (activeTab !== 'streams') {
       await fetchPaginated(activeTab, currentPage)
     }
