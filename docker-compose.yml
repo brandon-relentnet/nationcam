@@ -44,6 +44,11 @@ services:
       REDIS_URL: redis://redis:6379/0
       LOGTO_ENDPOINT: ${LOGTO_ENDPOINT:-https://auth.nationcam.com}
       CORS_ORIGINS: ${SERVICE_URL_WEB:-http://localhost:3000}
+      # Restreamer (optional — leave empty to disable stream management)
+      RESTREAMER_URL: ${RESTREAMER_URL:-}
+      RESTREAMER_USER: ${RESTREAMER_USER:-}
+      RESTREAMER_PASS: ${RESTREAMER_PASS:-}
+      STREAMER_API_KEY: ${STREAMER_API_KEY:-}
 
   # ── Web (nginx + React SPA) ───────────────────────────────
   # Domain set in Coolify general tab: https://nationcam.com

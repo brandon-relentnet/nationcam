@@ -9,9 +9,10 @@ NationCam — a live camera aggregation platform. React 19 SPA (TanStack Router)
 ```
 Browser ──▶ nginx (web service)
                │
-               ├── /api/*  ──▶  Go API (Chi) ──▶ PostgreSQL + Redis
+               ├── /api/streams/*  ──▶  Go API ──▶ Restreamer Core API (streamer.nationcam.com)
+               ├── /api/*          ──▶  Go API (Chi) ──▶ PostgreSQL + Redis
                │
-               └── /*       ──▶  React SPA (static files, index.html fallback)
+               └── /*              ──▶  React SPA (static files, index.html fallback)
 
 Browser ──▶ auth.nationcam.com ──▶ Logto (separate Coolify service, not in this compose)
 ```
@@ -48,12 +49,18 @@ Logto is deployed as a separate Coolify service with its own domains:
 
 Coolify auto-generates `SERVICE_URL_WEB`, `SERVICE_URL_API`, etc. The docker-compose references `SERVICE_URL_WEB` for CORS origins.
 
-**Custom env vars** — only 4 needed:
+**Custom env vars** — 4 required + 4 optional for streaming:
 ```
 POSTGRES_PASSWORD=<strong password>
 LOGTO_ENDPOINT=https://auth.nationcam.com
 LOGTO_APP_ID=<from Logto admin console>
 LOGTO_API_RESOURCE=https://api.nationcam.com
+
+# Optional — enable RTSP-to-HLS stream management
+RESTREAMER_URL=https://streamer.nationcam.com
+RESTREAMER_USER=admin
+RESTREAMER_PASS=<Restreamer password>
+STREAMER_API_KEY=<secret key for /api/streams/* endpoints>
 ```
 
 **First deploy steps:**
@@ -146,14 +153,21 @@ new-nationcam/                        # Repo root
         videos.sql.go
       middleware/
         auth.go                       # Logto JWT validation via JWKS + RequireAdmin
+        apikey.go                     # X-API-Key verification for stream endpoints
+        ratelimit.go                  # Sliding-window rate limiter
         cors.go                       # CORS middleware
         logger.go                     # Request logging (slog)
+      restreamer/
+        client.go                     # Restreamer API client + JWT token lifecycle
+        types.go                      # Request/response types for Restreamer Core API
+        validate.go                   # Stream name + RTSP URL validation
       handler/
         router.go                     # Chi router wiring all routes
         health.go                     # GET /health
         state.go                      # GET/POST /states
         sublocation.go                # GET/POST /sublocations
         video.go                      # GET/POST /videos
+        stream.go                     # CRUD handlers for /streams (Restreamer proxy)
         json.go                       # JSON read/write helpers
         cached.go                     # Response caching wrapper
   web/                                # React SPA
@@ -246,6 +260,22 @@ All endpoints are under `/api/` (nginx strips the prefix before forwarding to Go
 | GET    | `/videos?state_id=N`             | Videos by state                | None          |
 | GET    | `/videos?sublocation_id=N`       | Videos by sublocation          | None          |
 | POST   | `/videos`                        | Create video                   | Admin (Logto) |
+| GET    | `/streams`                       | List all active streams        | API Key       |
+| POST   | `/streams`                       | Create RTSP-to-HLS stream      | API Key       |
+| GET    | `/streams/{id}`                  | Get stream status              | API Key       |
+| DELETE | `/streams/{id}`                  | Remove a stream                | API Key       |
+| POST   | `/streams/{id}/restart`          | Restart a stream               | API Key       |
+
+### Stream Management
+
+The `/streams` endpoints proxy to a self-hosted datarhei Restreamer instance. They are only
+available when `RESTREAMER_URL` and `STREAMER_API_KEY` are configured. Auth is via `X-API-Key`
+header (not Logto). Stream creation is rate-limited to 10 requests per minute.
+
+- **HLS output**: Streams are accessible at `{RESTREAMER_URL}/memfs/{streamId}.m3u8`
+- **Codec**: Passthrough (`-codec:v copy -codec:a copy`) by default — no re-encoding
+- **Reconnect**: Auto-reconnect on failure with 15-second delay
+- **Token management**: The Go API manages Restreamer JWT tokens internally (auto-refresh)
 
 ### Caching
 
