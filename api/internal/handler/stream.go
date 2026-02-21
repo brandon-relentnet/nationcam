@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/brandon-relentnet/nationcam/api/internal/restreamer"
@@ -20,6 +21,8 @@ type createStreamRequest struct {
 // ── Handlers ──────────────────────────────────────────────────────────
 
 // CreateStream handles POST /streams — creates a new RTSP-to-HLS stream.
+// The process is created with the Restreamer UI naming convention so it
+// appears in the Restreamer dashboard and supports UI-based egress setup.
 func CreateStream(rc *restreamer.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req createStreamRequest
@@ -28,10 +31,10 @@ func CreateStream(rc *restreamer.Client) http.HandlerFunc {
 			return
 		}
 
-		// Sanitize stream name.
-		streamID, err := restreamer.SanitizeStreamName(req.Name)
-		if err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		// Validate the human-readable name (used in UI metadata, not as process ID).
+		name := strings.TrimSpace(req.Name)
+		if name == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "stream name is required"})
 			return
 		}
 
@@ -41,59 +44,47 @@ func CreateStream(rc *restreamer.Client) http.HandlerFunc {
 			return
 		}
 
-		// Check if process already exists.
-		if _, err := rc.GetProcess(r.Context(), streamID); err == nil {
-			writeJSON(w, http.StatusConflict, map[string]string{
-				"error": "stream '" + streamID + "' already exists",
-			})
+		// Generate a UUID for the process (matches Restreamer UI convention).
+		uuid, err := restreamer.NewUUID()
+		if err != nil {
+			slog.Error("failed to generate UUID", "error", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
 			return
 		}
 
-		// Build the FFmpeg process configuration.
-		cfg := restreamer.ProcessConfig{
-			ID:   streamID,
-			Type: "ffmpeg",
-			Input: []restreamer.ProcessIO{{
-				ID:      "0",
-				Address: req.RTSPURL,
-				Options: []string{"-rtsp_transport", "tcp", "-timeout", "5000000"},
-			}},
-			Output: []restreamer.ProcessIO{{
-				ID:      "0",
-				Address: "{memfs}/{processid}.m3u8",
-				Options: []string{
-					"-codec:v", "copy",
-					"-codec:a", "copy",
-					"-f", "hls",
-					"-hls_time", "2",
-					"-hls_list_size", "6",
-					"-hls_flags", "delete_segments+temp_file+append_list",
-					"-method", "PUT",
-				},
-			}},
-			Options:               []string{},
-			Autostart:             true,
-			Reconnect:             true,
-			ReconnectDelaySeconds: 15,
-			StaleTimeoutSeconds:   30,
-		}
+		processID := restreamer.IngestProcessID(uuid)
 
+		// Build the UI-compatible FFmpeg process config.
+		cfg := restreamer.BuildIngestConfig(uuid, req.RTSPURL, rc.BaseURL())
+
+		// Create the process on Restreamer.
 		if _, err := rc.CreateProcess(r.Context(), cfg); err != nil {
 			status, msg := mapRestreamerError(err)
-			slog.Error("create stream failed", "streamId", streamID, "error", err)
+			slog.Error("create stream failed", "processId", processID, "error", err)
 			writeJSON(w, status, map[string]string{"error": msg})
 			return
 		}
 
+		// Set the restreamer-ui metadata so the process appears in the UI.
+		uiMeta := restreamer.BuildUIMetadata(name, req.RTSPURL, uuid)
+		if err := rc.SetMetadata(r.Context(), processID, "restreamer-ui", uiMeta); err != nil {
+			// Process was created but metadata failed — log but don't fail the request.
+			// The stream will work for HLS but won't show in UI until metadata is fixed.
+			slog.Error("set UI metadata failed (stream still functional)",
+				"processId", processID, "error", err)
+		}
+
 		writeJSON(w, http.StatusCreated, restreamer.StreamResponse{
-			StreamID: streamID,
-			HlsURL:   rc.HLSURL(streamID),
+			StreamID: uuid,
+			Name:     name,
+			HlsURL:   rc.HLSURL(uuid),
 			Status:   "created",
 		})
 	}
 }
 
-// ListStreams handles GET /streams — returns all active streams.
+// ListStreams handles GET /streams — returns all active ingest streams.
+// Only returns ingest processes (not snapshots, egress, etc.).
 func ListStreams(rc *restreamer.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		procs, err := rc.ListProcesses(r.Context())
@@ -105,17 +96,27 @@ func ListStreams(rc *restreamer.Client) http.HandlerFunc {
 
 		streams := make([]restreamer.StreamDetail, 0, len(procs))
 		for _, p := range procs {
+			// Only include ingest processes (not snapshots or egress).
+			if !isIngestProcess(p.ID) {
+				continue
+			}
+
+			uuid := p.Reference
+			if uuid == "" {
+				uuid = extractUUID(p.ID)
+			}
+
 			state, err := rc.GetProcessState(r.Context(), p.ID)
 			if err != nil {
-				// Include the stream with unknown status rather than failing entirely.
 				streams = append(streams, restreamer.StreamDetail{
-					StreamID: p.ID,
-					HlsURL:   rc.HLSURL(p.ID),
+					StreamID: uuid,
+					Name:     restreamer.ExtractStreamName(&p),
+					HlsURL:   rc.HLSURL(uuid),
 					Status:   "unknown",
 				})
 				continue
 			}
-			streams = append(streams, buildStreamDetail(rc, p.ID, state))
+			streams = append(streams, buildStreamDetail(rc, uuid, restreamer.ExtractStreamName(&p), state))
 		}
 
 		writeJSON(w, http.StatusOK, streams)
@@ -123,31 +124,45 @@ func ListStreams(rc *restreamer.Client) http.HandlerFunc {
 }
 
 // GetStream handles GET /streams/{id} — returns a single stream's state.
+// The {id} parameter is the UUID (without the restreamer-ui:ingest: prefix).
 func GetStream(rc *restreamer.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := chi.URLParam(r, "id")
+		uuid := chi.URLParam(r, "id")
+		processID := restreamer.IngestProcessID(uuid)
 
-		state, err := rc.GetProcessState(r.Context(), id)
+		// Fetch the process to get the name from metadata.
+		proc, err := rc.GetProcess(r.Context(), processID)
 		if err != nil {
 			status, msg := mapRestreamerError(err)
 			writeJSON(w, status, map[string]string{"error": msg})
 			return
 		}
 
-		writeJSON(w, http.StatusOK, buildStreamDetail(rc, id, state))
+		state, err := rc.GetProcessState(r.Context(), processID)
+		if err != nil {
+			status, msg := mapRestreamerError(err)
+			writeJSON(w, status, map[string]string{"error": msg})
+			return
+		}
+
+		writeJSON(w, http.StatusOK, buildStreamDetail(rc, uuid, restreamer.ExtractStreamName(proc), state))
 	}
 }
 
 // DeleteStream handles DELETE /streams/{id} — removes a stream.
 func DeleteStream(rc *restreamer.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := chi.URLParam(r, "id")
+		uuid := chi.URLParam(r, "id")
+		processID := restreamer.IngestProcessID(uuid)
 
-		if err := rc.DeleteProcess(r.Context(), id); err != nil {
+		if err := rc.DeleteProcess(r.Context(), processID); err != nil {
 			status, msg := mapRestreamerError(err)
 			writeJSON(w, status, map[string]string{"error": msg})
 			return
 		}
+
+		// Also try to delete the snapshot process (best-effort).
+		_ = rc.DeleteProcess(r.Context(), processID+"_snapshot")
 
 		w.WriteHeader(http.StatusNoContent)
 	}
@@ -156,10 +171,11 @@ func DeleteStream(rc *restreamer.Client) http.HandlerFunc {
 // RestartStream handles POST /streams/{id}/restart — stops then starts a stream.
 func RestartStream(rc *restreamer.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := chi.URLParam(r, "id")
+		uuid := chi.URLParam(r, "id")
+		processID := restreamer.IngestProcessID(uuid)
 
 		// Stop the process.
-		if err := rc.CommandProcess(r.Context(), id, "stop"); err != nil {
+		if err := rc.CommandProcess(r.Context(), processID, "stop"); err != nil {
 			status, msg := mapRestreamerError(err)
 			writeJSON(w, status, map[string]string{"error": msg})
 			return
@@ -169,16 +185,17 @@ func RestartStream(rc *restreamer.Client) http.HandlerFunc {
 		time.Sleep(1 * time.Second)
 
 		// Start the process.
-		if err := rc.CommandProcess(r.Context(), id, "start"); err != nil {
+		if err := rc.CommandProcess(r.Context(), processID, "start"); err != nil {
 			status, msg := mapRestreamerError(err)
-			slog.Error("restart stream: start failed", "streamId", id, "error", err)
+			slog.Error("restart stream: start failed", "processId", processID, "error", err)
 			writeJSON(w, status, map[string]string{"error": msg})
 			return
 		}
 
 		writeJSON(w, http.StatusOK, restreamer.StreamResponse{
-			StreamID: id,
-			HlsURL:   rc.HLSURL(id),
+			StreamID: uuid,
+			Name:     "",
+			HlsURL:   rc.HLSURL(uuid),
 			Status:   "restarting",
 		})
 	}
@@ -186,11 +203,28 @@ func RestartStream(rc *restreamer.Client) http.HandlerFunc {
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
+// isIngestProcess returns true if the process ID is an ingest process
+// (not a snapshot, egress, or other auxiliary process).
+func isIngestProcess(id string) bool {
+	return strings.HasPrefix(id, "restreamer-ui:ingest:") &&
+		!strings.HasSuffix(id, "_snapshot")
+}
+
+// extractUUID extracts the UUID from a restreamer-ui:ingest:<uuid> process ID.
+func extractUUID(processID string) string {
+	const prefix = "restreamer-ui:ingest:"
+	if strings.HasPrefix(processID, prefix) {
+		return strings.TrimSuffix(strings.TrimPrefix(processID, prefix), "_snapshot")
+	}
+	return processID
+}
+
 // buildStreamDetail maps a Restreamer process state to a simplified StreamDetail.
-func buildStreamDetail(rc *restreamer.Client, id string, state *restreamer.ProcessState) restreamer.StreamDetail {
+func buildStreamDetail(rc *restreamer.Client, uuid, name string, state *restreamer.ProcessState) restreamer.StreamDetail {
 	return restreamer.StreamDetail{
-		StreamID:       id,
-		HlsURL:         rc.HLSURL(id),
+		StreamID:       uuid,
+		Name:           name,
+		HlsURL:         rc.HLSURL(uuid),
 		Status:         state.Exec,
 		RuntimeSeconds: state.RuntimeSeconds,
 		FPS:            state.Progress.FPS,

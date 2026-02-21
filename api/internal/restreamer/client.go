@@ -49,9 +49,10 @@ func (c *Client) BaseURL() string {
 	return c.baseURL
 }
 
-// HLSURL returns the public HLS URL for a given stream ID.
-func (c *Client) HLSURL(streamID string) string {
-	return fmt.Sprintf("%s/memfs/%s.m3u8", c.baseURL, streamID)
+// HLSURL returns the public HLS master playlist URL for a given UUID.
+// The master playlist is at {uuid}.m3u8 (not the variant playlist).
+func (c *Client) HLSURL(uuid string) string {
+	return fmt.Sprintf("%s/memfs/%s.m3u8", c.baseURL, uuid)
 }
 
 // ── Public API methods ────────────────────────────────────────────────
@@ -100,6 +101,12 @@ func (c *Client) DeleteProcess(ctx context.Context, id string) error {
 // CommandProcess sends a command (start/stop) to a process.
 func (c *Client) CommandProcess(ctx context.Context, id, command string) error {
 	return c.doJSON(ctx, http.MethodPut, "/api/v3/process/"+id+"/command", CommandRequest{Command: command}, nil)
+}
+
+// SetMetadata sets a metadata key on a process.
+// Used to set the "restreamer-ui" key so the process appears in the UI.
+func (c *Client) SetMetadata(ctx context.Context, processID, key string, value any) error {
+	return c.doJSON(ctx, http.MethodPut, "/api/v3/process/"+processID+"/metadata/"+key, value, nil)
 }
 
 // ── Token lifecycle ───────────────────────────────────────────────────
