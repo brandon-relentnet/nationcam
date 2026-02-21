@@ -12,8 +12,10 @@ import {
   LogIn,
   MapPin,
   Pencil,
+  Plus,
   Radio,
   RefreshCw,
+  RotateCcw,
   Trash2,
   X,
 } from 'lucide-react'
@@ -27,7 +29,6 @@ import type {
 import { useAuth } from '@/hooks/useAuth'
 import Button from '@/components/Button'
 import Dropdown from '@/components/Dropdown'
-import Reveal from '@/components/Reveal'
 import {
   createState,
   createStream,
@@ -57,7 +58,7 @@ type Tab = 'cameras' | 'states' | 'sublocations' | 'streams'
 const TABS: Array<{ id: Tab; label: string; icon: typeof Film }> = [
   { id: 'cameras', label: 'Cameras', icon: Film },
   { id: 'states', label: 'States', icon: MapPin },
-  { id: 'sublocations', label: 'Sublocations', icon: Landmark },
+  { id: 'sublocations', label: 'Locations', icon: Landmark },
   { id: 'streams', label: 'Streams', icon: Radio },
 ]
 
@@ -88,7 +89,9 @@ export const Route = createLazyFileRoute('/dashboard')({
   component: DashboardPage,
 })
 
-/* ──── Auth Gate ──── */
+/* ════════════════════════════════════════════════
+   Auth Gate
+   ════════════════════════════════════════════════ */
 
 function DashboardPage() {
   const { isAuthenticated, isLoading, user, login } = useAuth()
@@ -116,7 +119,9 @@ function DashboardPage() {
             className="h-8 w-8 rounded-full border-2 border-accent border-t-transparent"
             style={{ animation: 'spin 800ms linear infinite' }}
           />
-          <p className="mb-0 font-mono text-sm text-subtext0">Loading...</p>
+          <p className="mb-0 font-mono text-sm text-subtext0">
+            Authenticating...
+          </p>
         </div>
       </div>
     )
@@ -125,16 +130,23 @@ function DashboardPage() {
   if (!isAuthenticated) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <Reveal variant="scale">
-          <div className="w-full max-w-sm">
-            <div className="rounded-xl border border-overlay0 bg-surface0 p-8 shadow-xl">
+        <div
+          className="w-full max-w-sm"
+          style={{
+            opacity: 0,
+            animation: 'scale-fade-in 400ms var(--spring-poppy) forwards',
+          }}
+        >
+          <div className="overflow-hidden rounded-2xl border border-overlay0 bg-surface0 shadow-xl">
+            <div className="h-1 bg-gradient-to-r from-accent via-accent/50 to-transparent" />
+            <div className="p-8">
               <div className="mb-6 flex flex-col items-center gap-3 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
-                  <LogIn size={20} className="text-accent" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10">
+                  <LogIn size={24} className="text-accent" />
                 </div>
-                <h4 className="mb-0">Sign in to continue</h4>
+                <h4 className="mb-0 font-display">Sign in to continue</h4>
                 <p className="mb-0 text-sm text-subtext0">
-                  You need to be signed in to access the dashboard.
+                  Authentication required for dashboard access.
                 </p>
               </div>
               <Button
@@ -146,7 +158,7 @@ function DashboardPage() {
               />
             </div>
           </div>
-        </Reveal>
+        </div>
       </div>
     )
   }
@@ -154,18 +166,21 @@ function DashboardPage() {
   return <DashboardContent userName={user?.name ?? user?.username ?? null} />
 }
 
-/* ──── Dashboard Content ──── */
+/* ════════════════════════════════════════════════
+   Dashboard Content
+   ════════════════════════════════════════════════ */
 
 function DashboardContent({ userName }: { userName: string | null }) {
   const { getToken } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('cameras')
 
-  // Non-paginated data for dropdowns + stats
+  // Non-paginated data for dropdowns + stat cards
   const [allStates, setAllStates] = useState<Array<State>>([])
   const [allSublocations, setAllSublocations] = useState<Array<Sublocation>>([])
   const [allVideos, setAllVideos] = useState<Array<Video>>([])
   const [allStreams, setAllStreams] = useState<Array<StreamDetail>>([])
   const [dataLoading, setDataLoading] = useState(true)
+  const [dataError, setDataError] = useState(false)
 
   // Paginated responses per tab
   const [statesPage, setStatesPage] = useState(1)
@@ -181,6 +196,7 @@ function DashboardContent({ userName }: { userName: string | null }) {
   // Fetch non-paginated data (for dropdowns + stat cards)
   const fetchOverview = async () => {
     setDataLoading(true)
+    setDataError(false)
     try {
       const token = await getToken()
       const [statesData, videosData] = await Promise.all([
@@ -195,20 +211,20 @@ function DashboardContent({ userName }: { userName: string | null }) {
       )
       setAllSublocations(allSubs.flat())
 
-      // Streams require auth — fetch silently, empty array on failure.
       try {
         const streamsData = await fetchStreams(token)
         setAllStreams(streamsData)
       } catch {
         setAllStreams([])
       }
+    } catch {
+      setDataError(true)
     } finally {
       setDataLoading(false)
     }
   }
 
   // Silent refresh — re-fetches data without showing skeleton loaders.
-  // Used after create/update/delete so the UI stays interactive.
   const refreshData = async () => {
     try {
       const token = await getToken()
@@ -235,7 +251,6 @@ function DashboardContent({ userName }: { userName: string | null }) {
     }
   }
 
-  // Fetch paginated data for current tab
   const fetchPaginated = async (tab: Tab, page: number) => {
     const token = await getToken()
     if (tab === 'states') {
@@ -250,7 +265,6 @@ function DashboardContent({ userName }: { userName: string | null }) {
     }
   }
 
-  // Refresh everything (after create/update/delete)
   const refreshAll = async () => {
     await refreshData()
     if (activeTab !== 'streams') {
@@ -275,102 +289,143 @@ function DashboardContent({ userName }: { userName: string | null }) {
     }
   }, [activeTab, statesPage, subsPage, videosPage])
 
-  const tabIndex = TABS.findIndex((t) => t.id === activeTab)
+  const tabCounts: Record<Tab, number> = {
+    cameras: allVideos.length,
+    states: allStates.length,
+    sublocations: allSublocations.length,
+    streams: allStreams.length,
+  }
+
+  // Error state — failed initial load
+  if (dataError && !dataLoading) {
+    return (
+      <div className="page-container">
+        <div
+          className="flex min-h-[40vh] flex-col items-center justify-center gap-5"
+          style={{
+            opacity: 0,
+            animation: 'scale-fade-in 400ms var(--spring-poppy) forwards',
+          }}
+        >
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-live/10">
+            <AlertCircle size={28} className="text-live" />
+          </div>
+          <div className="text-center">
+            <h4 className="mb-1 font-display">Connection lost</h4>
+            <p className="mb-0 max-w-xs text-sm text-subtext0">
+              Could not reach the NationCam API. Check your connection and try
+              again.
+            </p>
+          </div>
+          <button
+            onClick={fetchOverview}
+            className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-crust transition-all duration-200 hover:bg-accent-hover active:scale-95"
+          >
+            <RotateCcw size={15} />
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="page-container space-y-8">
-      {/* Header */}
-      <Reveal variant="blur">
+    <div className="page-container space-y-6">
+      {/* ── Header ── */}
+      <div
+        className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between"
+        style={{
+          opacity: 0,
+          animation: 'blur-in 500ms var(--spring-ease-out) forwards',
+        }}
+      >
         <div>
-          <p className="mb-2 font-mono text-xs font-medium tracking-widest text-accent uppercase">
-            Dashboard
+          <p className="mb-1 font-mono text-[11px] font-medium tracking-[0.2em] text-accent uppercase">
+            Control Room
           </p>
-          <h1 className="!mb-1">
+          <h1 className="!mb-0 !text-2xl sm:!text-3xl">
             {userName ? (
               <>
-                Welcome back,{' '}
+                Hello,{' '}
                 <span className="text-accent">{userName}</span>
               </>
             ) : (
               'Dashboard'
             )}
           </h1>
-          <p className="mb-0 max-w-lg text-subtext0">
-            Manage your cameras, states, sublocations, and streams.
-          </p>
         </div>
-      </Reveal>
-
-      {/* Stats */}
-      <Reveal variant="float">
-        {dataLoading ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {[0, 1, 2, 3].map((i) => (
-              <StatSkeleton key={i} />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <StatCard
-              icon={Film}
-              value={allVideos.length}
-              label="Active cameras"
-              delay={0}
-            />
-            <StatCard
-              icon={MapPin}
-              value={allStates.length}
-              label="States"
-              delay={80}
-            />
-            <StatCard
-              icon={Landmark}
-              value={allSublocations.length}
-              label="Sublocations"
-              delay={160}
-            />
-            <StatCard
-              icon={Radio}
-              value={allStreams.length}
-              label="Live streams"
-              delay={240}
-            />
-          </div>
-        )}
-      </Reveal>
-
-      {/* Tab bar */}
-      <div className="relative flex border-b border-overlay0">
-        {/* Sliding indicator */}
-        <div
-          className="absolute bottom-0 h-0.5 rounded-full bg-accent transition-transform duration-300 ease-[var(--spring-snappy)]"
-          style={{
-            width: `${100 / TABS.length}%`,
-            transform: `translateX(${tabIndex * 100}%)`,
-          }}
-        />
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex flex-1 items-center justify-center gap-2 py-3.5 text-sm font-medium transition-colors duration-200 ${
-              activeTab === tab.id
-                ? 'text-accent'
-                : 'text-subtext0 hover:text-text'
-            }`}
+        {!dataLoading && (
+          <p
+            className="mb-0 font-mono text-[11px] text-subtext0"
+            style={{
+              opacity: 0,
+              animation: 'fade-in 600ms var(--spring-ease-out) 300ms forwards',
+            }}
           >
-            <tab.icon size={16} />
-            <span className="hidden sm:inline">{tab.label}</span>
-          </button>
-        ))}
+            {allVideos.length} cameras &middot; {allStates.length} states
+            &middot; {allStreams.length} streams
+          </p>
+        )}
       </div>
 
-      {/* Tab content */}
+      {/* ── Tab Bar ── */}
+      <div
+        className="grid grid-cols-4 gap-2 sm:gap-3"
+        style={{
+          opacity: 0,
+          animation:
+            'float-up 500ms var(--spring-bounce) 100ms forwards',
+        }}
+      >
+        {TABS.map((tab, i) => {
+          const isActive = activeTab === tab.id
+          const count = dataLoading ? null : tabCounts[tab.id]
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`group relative flex flex-col items-center gap-0.5 overflow-hidden rounded-xl border px-2 py-3 transition-all duration-300 ease-[var(--spring-snappy)] sm:gap-1 sm:px-4 sm:py-4 ${
+                isActive
+                  ? 'border-accent/30 bg-accent/8 text-accent shadow-sm'
+                  : 'border-overlay0/50 bg-surface0/60 text-subtext0 hover:border-overlay0 hover:bg-surface0 hover:text-text'
+              }`}
+              style={{
+                opacity: 0,
+                animation: `scale-fade-in 350ms var(--spring-poppy) ${150 + i * 60}ms forwards`,
+              }}
+            >
+              {/* Accent glow on active */}
+              {isActive && (
+                <div className="absolute inset-x-0 -top-px h-0.5 bg-gradient-to-r from-transparent via-accent to-transparent" />
+              )}
+
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <tab.icon
+                  size={15}
+                  className={isActive ? 'text-accent' : 'text-subtext0 transition-colors group-hover:text-text'}
+                />
+                {count !== null ? (
+                  <span className="font-display text-xl font-bold leading-none sm:text-2xl">
+                    {count}
+                  </span>
+                ) : (
+                  <span className="inline-block h-5 w-6 animate-pulse rounded bg-surface1 sm:h-6 sm:w-8" />
+                )}
+              </div>
+              <span className="font-mono text-[9px] leading-tight tracking-[0.15em] uppercase sm:text-[10px]">
+                {tab.label}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ── Tab Content ── */}
       <div
         key={activeTab}
         style={{
           opacity: 0,
-          animation: 'fade-in 250ms var(--spring-ease-out) forwards',
+          animation: 'fade-in 200ms var(--spring-ease-out) forwards',
         }}
       >
         {activeTab === 'cameras' && (
@@ -419,57 +474,9 @@ function DashboardContent({ userName }: { userName: string | null }) {
   )
 }
 
-/* ──── Stats ──── */
-
-function StatCard({
-  icon: Icon,
-  value,
-  label,
-  delay,
-}: {
-  icon: typeof Film
-  value: number
-  label: string
-  delay: number
-}) {
-  return (
-    <div
-      className="group relative overflow-hidden rounded-xl border border-overlay0 bg-surface0 p-5 transition-[border-color,box-shadow] duration-300 ease-[var(--spring-gentle)] hover:border-accent/30 hover:shadow-lg"
-      style={{
-        opacity: 0,
-        animation: `scale-fade-in 400ms var(--spring-poppy) ${delay}ms forwards`,
-      }}
-    >
-      {/* Decorative corner orb */}
-      <div className="absolute -top-6 -right-6 h-16 w-16 rounded-full bg-accent/5 transition-transform duration-500 ease-[var(--spring-smooth)] group-hover:scale-[2]" />
-      <div className="relative flex items-center gap-3.5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
-          <Icon size={20} className="text-accent" />
-        </div>
-        <div>
-          <p className="mb-0 font-display text-2xl leading-none font-bold text-text">
-            {value}
-          </p>
-          <p className="mb-0 text-xs font-medium text-subtext0">{label}</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function StatSkeleton() {
-  return (
-    <div className="flex items-center gap-3.5 rounded-xl border border-overlay0 bg-surface0 p-5">
-      <div className="h-10 w-10 animate-pulse rounded-lg bg-surface1" />
-      <div className="space-y-2">
-        <div className="h-6 w-12 animate-pulse rounded bg-surface1" />
-        <div className="h-3 w-16 animate-pulse rounded bg-surface1" />
-      </div>
-    </div>
-  )
-}
-
-/* ──── Cameras Panel ──── */
+/* ════════════════════════════════════════════════
+   Cameras Panel
+   ════════════════════════════════════════════════ */
 
 function CamerasPanel({
   states,
@@ -490,6 +497,7 @@ function CamerasPanel({
   onSuccess: () => void
   loading: boolean
 }) {
+  const [showCreate, setShowCreate] = useState(false)
   const [title, setTitle] = useState('')
   const [src, setSrc] = useState('')
   const [type, setType] = useState('')
@@ -508,6 +516,10 @@ function CamerasPanel({
   const [deleting, setDeleting] = useState(false)
   const [editing, setEditing] = useState<Video | null>(null)
 
+  const filteredSubs = sublocations.filter((s) => s.state_id === stateId)
+  const videos = paginated?.data ?? []
+  const total = paginated?.total ?? 0
+
   const handleDelete = async () => {
     if (!confirmDelete) return
     setDeleting(true)
@@ -523,10 +535,6 @@ function CamerasPanel({
       setDeleting(false)
     }
   }
-
-  const filteredSubs = sublocations.filter((s) => s.state_id === stateId)
-  const videos = paginated?.data ?? []
-  const total = paginated?.total ?? 0
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -566,91 +574,94 @@ function CamerasPanel({
 
   return (
     <>
-      <div className="grid gap-6 lg:grid-cols-5">
-        {/* Form */}
-        <div className="lg:col-span-2">
-          <FormCard title="Add Camera" icon={Film}>
+      <div className="space-y-4">
+        {/* Panel header */}
+        <PanelHeader
+          title="Cameras"
+          subtitle="Manage camera feeds and streams"
+          showCreate={showCreate}
+          onToggleCreate={() => {
+            setShowCreate(!showCreate)
+            setMsg(null)
+          }}
+          createLabel="Add Camera"
+        />
+
+        {/* Collapsible create form */}
+        {showCreate && (
+          <CreatePanel>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <DashInput
-                label="Title"
-                value={title}
-                onChange={setTitle}
-                placeholder="e.g. Miami Beach South Cam"
-              />
-              <DashInput
-                label="Source URL"
-                value={src}
-                onChange={setSrc}
-                placeholder="e.g. https://stream.example.com/live.m3u8"
-              />
-              <Dropdown
-                label="Video Type"
-                options={VIDEO_TYPE_OPTIONS}
-                selectedValue={type}
-                onSelect={(v) => setType(String(v))}
-              />
-              <Dropdown
-                label="State"
-                options={states.map((s) => ({
-                  value: s.state_id,
-                  label: s.name,
-                }))}
-                selectedValue={stateId}
-                onSelect={(v) => {
-                  setStateId(Number(v))
-                  setSublocationId('')
-                }}
-              />
-              {filteredSubs.length > 0 && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  label="Title"
+                  value={title}
+                  onChange={setTitle}
+                  placeholder="e.g. Miami Beach South Cam"
+                />
+                <FormField
+                  label="Source URL"
+                  value={src}
+                  onChange={setSrc}
+                  placeholder="https://stream.example.com/live.m3u8"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <Dropdown
-                  label="Sublocation"
-                  options={filteredSubs.map((s) => ({
-                    value: s.sublocation_id,
+                  label="Video Type"
+                  options={VIDEO_TYPE_OPTIONS}
+                  selectedValue={type}
+                  onSelect={(v) => setType(String(v))}
+                />
+                <Dropdown
+                  label="State"
+                  options={states.map((s) => ({
+                    value: s.state_id,
                     label: s.name,
                   }))}
-                  selectedValue={sublocationId}
-                  onSelect={(v) => setSublocationId(Number(v))}
+                  selectedValue={stateId}
+                  onSelect={(v) => {
+                    setStateId(Number(v))
+                    setSublocationId('')
+                  }}
                 />
-              )}
-              <Dropdown
-                label="Status"
-                options={STATUS_OPTIONS}
-                selectedValue={status}
-                onSelect={(v) => setStatus(String(v))}
-              />
-              <StatusBanner msg={msg} />
-              <SubmitBtn submitting={submitting} label="Add Camera" />
+                {filteredSubs.length > 0 ? (
+                  <Dropdown
+                    label="Sublocation"
+                    options={filteredSubs.map((s) => ({
+                      value: s.sublocation_id,
+                      label: s.name,
+                    }))}
+                    selectedValue={sublocationId}
+                    onSelect={(v) => setSublocationId(Number(v))}
+                  />
+                ) : (
+                  <div />
+                )}
+                <Dropdown
+                  label="Status"
+                  options={STATUS_OPTIONS}
+                  selectedValue={status}
+                  onSelect={(v) => setStatus(String(v))}
+                />
+              </div>
+              <FormFooter msg={msg} submitting={submitting} label="Add Camera" />
             </form>
-          </FormCard>
-        </div>
+          </CreatePanel>
+        )}
 
         {/* List */}
-        <div className="lg:col-span-3">
-          <ListCard
-            title="Existing Cameras"
-            count={total}
-            loading={loading}
-            empty={videos.length === 0}
-            emptyIcon={Film}
-            emptyText="No cameras yet. Add one to get started."
-          >
-            {videos.map((v, i) => (
-              <VideoRow
-                key={v.video_id}
-                video={v}
-                index={i}
-                onEdit={(video) => setEditing(video)}
-                onDelete={(id, name) => setConfirmDelete({ id, name })}
-              />
-            ))}
-            <PaginationControls
-              page={page}
-              perPage={PER_PAGE}
-              total={total}
-              onPageChange={setPage}
+        <DataList loading={loading} empty={videos.length === 0} emptyIcon={Film} emptyText="No cameras yet">
+          {videos.map((v, i) => (
+            <VideoRow
+              key={v.video_id}
+              video={v}
+              index={i}
+              onEdit={() => setEditing(v)}
+              onDelete={() => setConfirmDelete({ id: v.video_id, name: v.title })}
             />
-          </ListCard>
-        </div>
+          ))}
+          <PaginationBar page={page} perPage={PER_PAGE} total={total} onPageChange={setPage} />
+        </DataList>
       </div>
 
       {confirmDelete && (
@@ -661,17 +672,13 @@ function CamerasPanel({
           onCancel={() => setConfirmDelete(null)}
         />
       )}
-
       {editing && (
         <EditVideoModal
           video={editing}
           states={states}
           sublocations={sublocations}
           getToken={getToken}
-          onSuccess={() => {
-            setEditing(null)
-            onSuccess()
-          }}
+          onSuccess={() => { setEditing(null); onSuccess() }}
           onClose={() => setEditing(null)}
         />
       )}
@@ -679,7 +686,9 @@ function CamerasPanel({
   )
 }
 
-/* ──── States Panel ──── */
+/* ════════════════════════════════════════════════
+   States Panel
+   ════════════════════════════════════════════════ */
 
 function StatesPanel({
   paginated,
@@ -696,6 +705,7 @@ function StatesPanel({
   onSuccess: () => void
   loading: boolean
 }) {
+  const [showCreate, setShowCreate] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -709,6 +719,9 @@ function StatesPanel({
   } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [editing, setEditing] = useState<State | null>(null)
+
+  const states = paginated?.data ?? []
+  const total = paginated?.total ?? 0
 
   const handleDelete = async () => {
     if (!confirmDelete) return
@@ -726,29 +739,23 @@ function StatesPanel({
     }
   }
 
-  const states = paginated?.data ?? []
-  const total = paginated?.total ?? 0
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name) {
-      setMsg({ text: 'Please enter a state name.', ok: false })
+      setMsg({ text: 'State name is required.', ok: false })
       return
     }
     setSubmitting(true)
     setMsg(null)
     try {
       const token = await getToken()
-      await createState(
-        { name, description: description || undefined },
-        token,
-      )
-      setMsg({ text: 'State added successfully!', ok: true })
+      await createState({ name, description: description || undefined }, token)
+      setMsg({ text: 'State created!', ok: true })
       setName('')
       setDescription('')
       onSuccess()
     } catch {
-      setMsg({ text: 'Failed to add state.', ok: false })
+      setMsg({ text: 'Failed to create state.', ok: false })
     } finally {
       setSubmitting(false)
     }
@@ -756,83 +763,54 @@ function StatesPanel({
 
   return (
     <>
-      <div className="grid gap-6 lg:grid-cols-5">
-        <div className="lg:col-span-2">
-          <FormCard title="Add State" icon={MapPin}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <DashInput
-                label="State Name"
-                value={name}
-                onChange={setName}
-                placeholder="e.g. Florida"
-              />
-              <DashInput
-                label="Description"
-                value={description}
-                onChange={setDescription}
-                placeholder="Brief description (optional)"
-              />
-              <StatusBanner msg={msg} />
-              <SubmitBtn submitting={submitting} label="Add State" />
-            </form>
-          </FormCard>
-        </div>
+      <div className="space-y-4">
+        <PanelHeader
+          title="States"
+          subtitle="Geographic regions for camera grouping"
+          showCreate={showCreate}
+          onToggleCreate={() => { setShowCreate(!showCreate); setMsg(null) }}
+          createLabel="Add State"
+        />
 
-        <div className="lg:col-span-3">
-          <ListCard
-            title="Existing States"
-            count={total}
-            loading={loading}
-            empty={states.length === 0}
-            emptyIcon={MapPin}
-            emptyText="No states yet. Add one to get started."
-          >
-            {states.map((s, i) => (
-              <StateRow
-                key={s.state_id}
-                state={s}
-                index={i}
-                onEdit={(state) => setEditing(state)}
-                onDelete={(stateSlug, label) =>
-                  setConfirmDelete({ slug: stateSlug, name: label })
-                }
-              />
-            ))}
-            <PaginationControls
-              page={page}
-              perPage={PER_PAGE}
-              total={total}
-              onPageChange={setPage}
+        {showCreate && (
+          <CreatePanel>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label="State Name" value={name} onChange={setName} placeholder="e.g. Florida" />
+                <FormField label="Description" value={description} onChange={setDescription} placeholder="Brief description (optional)" />
+              </div>
+              <FormFooter msg={msg} submitting={submitting} label="Add State" />
+            </form>
+          </CreatePanel>
+        )}
+
+        <DataList loading={loading} empty={states.length === 0} emptyIcon={MapPin} emptyText="No states yet">
+          {states.map((s, i) => (
+            <StateRow
+              key={s.state_id}
+              state={s}
+              index={i}
+              onEdit={() => setEditing(s)}
+              onDelete={() => setConfirmDelete({ slug: s.slug, name: s.name })}
             />
-          </ListCard>
-        </div>
+          ))}
+          <PaginationBar page={page} perPage={PER_PAGE} total={total} onPageChange={setPage} />
+        </DataList>
       </div>
 
       {confirmDelete && (
-        <ConfirmDeleteDialog
-          name={confirmDelete.name}
-          deleting={deleting}
-          onConfirm={handleDelete}
-          onCancel={() => setConfirmDelete(null)}
-        />
+        <ConfirmDeleteDialog name={confirmDelete.name} deleting={deleting} onConfirm={handleDelete} onCancel={() => setConfirmDelete(null)} />
       )}
-
       {editing && (
-        <EditStateModal
-          state={editing}
-          getToken={getToken}
-          onSuccess={() => {
-            setEditing(null)
-            onSuccess()
-          }}
-          onClose={() => setEditing(null)}
-        />
+        <EditStateModal state={editing} getToken={getToken} onSuccess={() => { setEditing(null); onSuccess() }} onClose={() => setEditing(null)} />
       )}
     </>
   )
 }
 
-/* ──── Sublocations Panel ──── */
+/* ════════════════════════════════════════════════
+   Sublocations Panel
+   ════════════════════════════════════════════════ */
 
 function SublocationsPanel({
   states,
@@ -851,6 +829,7 @@ function SublocationsPanel({
   onSuccess: () => void
   loading: boolean
 }) {
+  const [showCreate, setShowCreate] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [stateId, setStateId] = useState<number | ''>('')
@@ -859,12 +838,12 @@ function SublocationsPanel({
 
   useAutoHide(msg, setMsg)
 
-  const [confirmDelete, setConfirmDelete] = useState<{
-    id: number
-    name: string
-  } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [editing, setEditing] = useState<Sublocation | null>(null)
+
+  const sublocations = paginated?.data ?? []
+  const total = paginated?.total ?? 0
 
   const handleDelete = async () => {
     if (!confirmDelete) return
@@ -882,13 +861,10 @@ function SublocationsPanel({
     }
   }
 
-  const sublocations = paginated?.data ?? []
-  const total = paginated?.total ?? 0
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name || !stateId) {
-      setMsg({ text: 'Please fill in all required fields.', ok: false })
+      setMsg({ text: 'Name and parent state are required.', ok: false })
       return
     }
     setSubmitting(true)
@@ -896,20 +872,16 @@ function SublocationsPanel({
     try {
       const token = await getToken()
       await createSublocation(
-        {
-          name,
-          description: description || undefined,
-          state_id: Number(stateId),
-        },
+        { name, description: description || undefined, state_id: Number(stateId) },
         token,
       )
-      setMsg({ text: 'Sublocation added successfully!', ok: true })
+      setMsg({ text: 'Sublocation created!', ok: true })
       setName('')
       setDescription('')
       setStateId('')
       onSuccess()
     } catch {
-      setMsg({ text: 'Failed to add sublocation.', ok: false })
+      setMsg({ text: 'Failed to create sublocation.', ok: false })
     } finally {
       setSubmitting(false)
     }
@@ -917,93 +889,60 @@ function SublocationsPanel({
 
   return (
     <>
-      <div className="grid gap-6 lg:grid-cols-5">
-        <div className="lg:col-span-2">
-          <FormCard title="Add Sublocation" icon={Landmark}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <DashInput
-                label="Sublocation Name"
-                value={name}
-                onChange={setName}
-                placeholder="e.g. Miami Beach"
-              />
-              <Dropdown
-                label="Parent State"
-                options={states.map((s) => ({
-                  value: s.state_id,
-                  label: s.name,
-                }))}
-                selectedValue={stateId}
-                onSelect={(v) => setStateId(Number(v))}
-              />
-              <DashInput
-                label="Description"
-                value={description}
-                onChange={setDescription}
-                placeholder="Brief description (optional)"
-              />
-              <StatusBanner msg={msg} />
-              <SubmitBtn submitting={submitting} label="Add Sublocation" />
-            </form>
-          </FormCard>
-        </div>
+      <div className="space-y-4">
+        <PanelHeader
+          title="Sublocations"
+          subtitle="Specific locations within a state"
+          showCreate={showCreate}
+          onToggleCreate={() => { setShowCreate(!showCreate); setMsg(null) }}
+          createLabel="Add Sublocation"
+        />
 
-        <div className="lg:col-span-3">
-          <ListCard
-            title="Existing Sublocations"
-            count={total}
-            loading={loading}
-            empty={sublocations.length === 0}
-            emptyIcon={Landmark}
-            emptyText="No sublocations yet. Add one to get started."
-          >
-            {sublocations.map((s, i) => (
-              <SublocationRow
-                key={s.sublocation_id}
-                sublocation={s}
-                index={i}
-                onEdit={(sub) => setEditing(sub)}
-                onDelete={(id, label) =>
-                  setConfirmDelete({ id, name: label })
-                }
-              />
-            ))}
-            <PaginationControls
-              page={page}
-              perPage={PER_PAGE}
-              total={total}
-              onPageChange={setPage}
+        {showCreate && (
+          <CreatePanel>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <FormField label="Name" value={name} onChange={setName} placeholder="e.g. Miami Beach" />
+                <Dropdown
+                  label="Parent State"
+                  options={states.map((s) => ({ value: s.state_id, label: s.name }))}
+                  selectedValue={stateId}
+                  onSelect={(v) => setStateId(Number(v))}
+                />
+                <FormField label="Description" value={description} onChange={setDescription} placeholder="Optional" />
+              </div>
+              <FormFooter msg={msg} submitting={submitting} label="Add Sublocation" />
+            </form>
+          </CreatePanel>
+        )}
+
+        <DataList loading={loading} empty={sublocations.length === 0} emptyIcon={Landmark} emptyText="No sublocations yet">
+          {sublocations.map((s, i) => (
+            <SublocationRow
+              key={s.sublocation_id}
+              sublocation={s}
+              index={i}
+              onEdit={() => setEditing(s)}
+              onDelete={() => setConfirmDelete({ id: s.sublocation_id, name: s.name })}
             />
-          </ListCard>
-        </div>
+          ))}
+          <PaginationBar page={page} perPage={PER_PAGE} total={total} onPageChange={setPage} />
+        </DataList>
       </div>
 
       {confirmDelete && (
-        <ConfirmDeleteDialog
-          name={confirmDelete.name}
-          deleting={deleting}
-          onConfirm={handleDelete}
-          onCancel={() => setConfirmDelete(null)}
-        />
+        <ConfirmDeleteDialog name={confirmDelete.name} deleting={deleting} onConfirm={handleDelete} onCancel={() => setConfirmDelete(null)} />
       )}
-
       {editing && (
-        <EditSublocationModal
-          sublocation={editing}
-          states={states}
-          getToken={getToken}
-          onSuccess={() => {
-            setEditing(null)
-            onSuccess()
-          }}
-          onClose={() => setEditing(null)}
-        />
+        <EditSublocationModal sublocation={editing} states={states} getToken={getToken} onSuccess={() => { setEditing(null); onSuccess() }} onClose={() => setEditing(null)} />
       )}
     </>
   )
 }
 
-/* ──── Streams Panel ──── */
+/* ════════════════════════════════════════════════
+   Streams Panel
+   ════════════════════════════════════════════════ */
 
 function StreamsPanel({
   streams,
@@ -1016,6 +955,7 @@ function StreamsPanel({
   onSuccess: () => void
   loading: boolean
 }) {
+  const [showCreate, setShowCreate] = useState(false)
   const [name, setName] = useState('')
   const [rtspUrl, setRtspUrl] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -1023,10 +963,7 @@ function StreamsPanel({
 
   useAutoHide(msg, setMsg)
 
-  const [confirmDelete, setConfirmDelete] = useState<{
-    id: string
-    name: string
-  } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [restarting, setRestarting] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
@@ -1070,7 +1007,7 @@ function StreamsPanel({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name || !rtspUrl) {
-      setMsg({ text: 'Please fill in all fields.', ok: false })
+      setMsg({ text: 'Name and RTSP URL are required.', ok: false })
       return
     }
     setSubmitting(true)
@@ -1078,7 +1015,7 @@ function StreamsPanel({
     try {
       const token = await getToken()
       await createStream({ name, rtspUrl }, token)
-      setMsg({ text: 'Stream created successfully!', ok: true })
+      setMsg({ text: 'Stream created!', ok: true })
       setName('')
       setRtspUrl('')
       onSuccess()
@@ -1095,119 +1032,140 @@ function StreamsPanel({
 
   return (
     <>
-      <div className="grid gap-6 lg:grid-cols-5">
-        {/* Form */}
-        <div className="lg:col-span-2">
-          <FormCard title="Add Stream" icon={Radio}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <DashInput
-                label="Stream Name"
-                value={name}
-                onChange={setName}
-                placeholder="e.g. Pavilion Front Camera"
-              />
-              <DashInput
-                label="RTSP URL"
-                value={rtspUrl}
-                onChange={setRtspUrl}
-                placeholder="rtsp://user:pass@ip:554/path"
-              />
-              <div className="rounded-lg border border-overlay0/50 bg-base/50 px-3.5 py-2.5">
-                <p className="mb-0 text-xs text-subtext0">
-                  Creates an RTSP-to-HLS stream on Restreamer. The stream will
-                  appear in the Restreamer UI where you can set up YouTube or
-                  Facebook egress.
-                </p>
-              </div>
-              <StatusBanner msg={msg} />
-              <SubmitBtn submitting={submitting} label="Create Stream" />
-            </form>
-          </FormCard>
-        </div>
+      <div className="space-y-4">
+        <PanelHeader
+          title="Streams"
+          subtitle="RTSP-to-HLS stream management via Restreamer"
+          showCreate={showCreate}
+          onToggleCreate={() => { setShowCreate(!showCreate); setMsg(null) }}
+          createLabel="Add Stream"
+        />
 
-        {/* List */}
-        <div className="lg:col-span-3">
-          <ListCard
-            title="Active Streams"
-            count={streams.length}
-            loading={loading}
-            empty={streams.length === 0}
-            emptyIcon={Radio}
-            emptyText="No streams yet. Create one to get started."
-          >
-            {streams.map((s, i) => (
-              <StreamRow
-                key={s.streamId}
-                stream={s}
-                index={i}
-                restarting={restarting === s.streamId}
-                copied={copied === s.streamId}
-                onRestart={() => handleRestart(s.streamId)}
-                onCopy={() => handleCopy(s.hlsUrl, s.streamId)}
-                onDelete={() =>
-                  setConfirmDelete({
-                    id: s.streamId,
-                    name: s.name,
-                  })
-                }
-              />
-            ))}
-          </ListCard>
-        </div>
+        {showCreate && (
+          <CreatePanel>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label="Stream Name" value={name} onChange={setName} placeholder="e.g. Pavilion Front Camera" />
+                <FormField label="RTSP URL" value={rtspUrl} onChange={setRtspUrl} placeholder="rtsp://user:pass@ip:554/path" />
+              </div>
+              <p className="mb-0 text-xs text-subtext0">
+                Creates an RTSP-to-HLS stream on Restreamer. Streams appear in the Restreamer UI for YouTube/Facebook egress setup.
+              </p>
+              <FormFooter msg={msg} submitting={submitting} label="Create Stream" />
+            </form>
+          </CreatePanel>
+        )}
+
+        <DataList loading={loading} empty={streams.length === 0} emptyIcon={Radio} emptyText="No streams yet">
+          {streams.map((s, i) => (
+            <StreamRow
+              key={s.streamId}
+              stream={s}
+              index={i}
+              restarting={restarting === s.streamId}
+              copied={copied === s.streamId}
+              onRestart={() => handleRestart(s.streamId)}
+              onCopy={() => handleCopy(s.hlsUrl, s.streamId)}
+              onDelete={() => setConfirmDelete({ id: s.streamId, name: s.name })}
+            />
+          ))}
+        </DataList>
+
+        {/* Stream-level status banner (for restart/delete feedback) */}
+        {msg && !showCreate && (
+          <StatusBanner msg={msg} />
+        )}
       </div>
 
       {confirmDelete && (
-        <ConfirmDeleteDialog
-          name={confirmDelete.name}
-          deleting={deleting}
-          onConfirm={handleDelete}
-          onCancel={() => setConfirmDelete(null)}
-        />
+        <ConfirmDeleteDialog name={confirmDelete.name} deleting={deleting} onConfirm={handleDelete} onCancel={() => setConfirmDelete(null)} />
       )}
     </>
   )
 }
 
-/* ──── Form Shared Components ──── */
+/* ════════════════════════════════════════════════
+   Shared — Panel Header
+   ════════════════════════════════════════════════ */
 
-type FormMsg = { text: string; ok: boolean } | null
-
-/** Auto-dismiss form messages after 4 seconds. */
-function useAutoHide(msg: FormMsg, setMsg: (m: FormMsg) => void) {
-  useEffect(() => {
-    if (!msg) return
-    const t = setTimeout(() => setMsg(null), 4000)
-    return () => clearTimeout(t)
-  }, [msg, setMsg])
-}
-
-function FormCard({
+function PanelHeader({
   title,
-  icon: Icon,
-  children,
+  subtitle,
+  showCreate,
+  onToggleCreate,
+  createLabel,
 }: {
   title: string
-  icon: typeof Film
-  children: React.ReactNode
+  subtitle: string
+  showCreate: boolean
+  onToggleCreate: () => void
+  createLabel: string
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-overlay0 bg-surface0 shadow-lg">
-      {/* Accent top bar */}
-      <div className="h-1 bg-gradient-to-r from-accent via-accent/60 to-transparent" />
-      <div className="p-5">
-        <div className="mb-5 flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-accent/10">
-            <Icon size={14} className="text-accent" />
-          </div>
-          <h5 className="mb-0 !text-base font-semibold text-text">{title}</h5>
-        </div>
-        {children}
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0">
+        <h3 className="!mb-0 !text-lg font-display font-bold sm:!text-xl">{title}</h3>
+        <p className="mb-0 text-xs text-subtext0 sm:text-sm">{subtitle}</p>
       </div>
+      <button
+        type="button"
+        onClick={onToggleCreate}
+        className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ease-[var(--spring-snappy)] ${
+          showCreate
+            ? 'border border-overlay0 bg-surface1 text-subtext0 hover:text-text'
+            : 'bg-accent/10 text-accent hover:bg-accent/20'
+        }`}
+      >
+        {showCreate ? (
+          <>
+            <X size={15} />
+            <span className="hidden sm:inline">Cancel</span>
+          </>
+        ) : (
+          <>
+            <Plus size={15} />
+            <span className="hidden sm:inline">{createLabel}</span>
+          </>
+        )}
+      </button>
     </div>
   )
 }
 
-function DashInput({
+/* ════════════════════════════════════════════════
+   Shared — Create Panel (collapsible wrapper)
+   ════════════════════════════════════════════════ */
+
+function CreatePanel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="overflow-hidden rounded-xl border border-overlay0/60 bg-surface0"
+      style={{
+        opacity: 0,
+        animation: 'scale-fade-in 280ms var(--spring-poppy) forwards',
+      }}
+    >
+      <div className="h-px bg-gradient-to-r from-accent/40 via-accent/15 to-transparent" />
+      <div className="p-4 sm:p-5">{children}</div>
+    </div>
+  )
+}
+
+/* ════════════════════════════════════════════════
+   Shared — Form Components
+   ════════════════════════════════════════════════ */
+
+type FormMsg = { text: string; ok: boolean } | null
+
+function useAutoHide(msg: FormMsg, setMsg: (m: FormMsg) => void) {
+  useEffect(() => {
+    if (!msg) return
+    const t = setTimeout(() => setMsg(null), 5000)
+    return () => clearTimeout(t)
+  }, [msg, setMsg])
+}
+
+function FormField({
   label,
   value,
   onChange,
@@ -1220,7 +1178,7 @@ function DashInput({
 }) {
   return (
     <div>
-      <label className="mb-1.5 block font-sans text-xs font-medium text-subtext0">
+      <label className="mb-1.5 block text-xs font-medium text-subtext0">
         {label}
       </label>
       <input
@@ -1234,22 +1192,27 @@ function DashInput({
   )
 }
 
-function SubmitBtn({
+function FormFooter({
+  msg,
   submitting,
   label,
 }: {
+  msg: FormMsg
   submitting: boolean
   label: string
 }) {
   return (
-    <button
-      type="submit"
-      disabled={submitting}
-      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-6 py-2.5 font-sans text-sm font-semibold text-crust shadow-md transition-[scale,background-color,box-shadow,opacity] duration-350 ease-[var(--spring-snappy)] hover:scale-[1.02] hover:bg-accent-hover hover:shadow-lg active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
-    >
-      {submitting && <Loader2 size={16} className="animate-spin" />}
-      {submitting ? 'Adding...' : label}
-    </button>
+    <div className="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex-1">{msg && <StatusBanner msg={msg} />}</div>
+      <button
+        type="submit"
+        disabled={submitting}
+        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-accent px-6 py-2.5 text-sm font-semibold text-crust shadow-sm transition-all duration-200 ease-[var(--spring-snappy)] hover:bg-accent-hover hover:shadow-md active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50"
+      >
+        {submitting && <Loader2 size={15} className="animate-spin" />}
+        {submitting ? 'Saving...' : label}
+      </button>
+    </div>
   )
 }
 
@@ -1257,35 +1220,33 @@ function StatusBanner({ msg }: { msg: FormMsg }) {
   if (!msg) return null
   return (
     <div
-      className={`flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-sm font-medium ${
+      className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
         msg.ok
-          ? 'border-teal/20 bg-teal/10 text-teal'
-          : 'border-live/20 bg-live/10 text-live'
+          ? 'bg-teal/10 text-teal'
+          : 'bg-live/10 text-live'
       }`}
       style={{
         opacity: 0,
-        animation: 'scale-fade-in 300ms var(--spring-poppy) forwards',
+        animation: 'scale-fade-in 250ms var(--spring-poppy) forwards',
       }}
     >
-      {msg.ok ? <Check size={16} /> : <AlertCircle size={16} />}
+      {msg.ok ? <Check size={15} /> : <AlertCircle size={15} />}
       {msg.text}
     </div>
   )
 }
 
-/* ──── List Shared Components ──── */
+/* ════════════════════════════════════════════════
+   Shared — Data List
+   ════════════════════════════════════════════════ */
 
-function ListCard({
-  title,
-  count,
+function DataList({
   loading,
   empty,
   emptyIcon: EmptyIcon,
   emptyText,
   children,
 }: {
-  title: string
-  count: number
   loading: boolean
   empty: boolean
   emptyIcon: typeof Film
@@ -1293,26 +1254,15 @@ function ListCard({
   children: React.ReactNode
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-overlay0 bg-surface0 shadow-lg">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-overlay0/50 px-5 py-3.5">
-        <h5 className="mb-0 !text-sm font-medium text-subtext1">{title}</h5>
-        <span className="rounded-full bg-surface1 px-2.5 py-0.5 font-mono text-xs font-medium text-subtext0">
-          {count}
-        </span>
-      </div>
-
-      {/* Body */}
+    <div className="overflow-hidden rounded-xl border border-overlay0/60 bg-surface0">
       {loading ? (
         <ListSkeleton />
       ) : empty ? (
-        <div className="flex flex-col items-center gap-3 py-14 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface1">
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface1">
             <EmptyIcon size={22} className="text-subtext0" />
           </div>
-          <p className="mb-0 max-w-[200px] text-sm text-subtext0">
-            {emptyText}
-          </p>
+          <p className="mb-0 max-w-[220px] text-sm text-subtext0">{emptyText}</p>
         </div>
       ) : (
         <div className="divide-y divide-overlay0/30">{children}</div>
@@ -1323,21 +1273,22 @@ function ListCard({
 
 function ListSkeleton() {
   return (
-    <div className="divide-y divide-overlay0/30">
-      {[0, 1, 2, 3].map((i) => (
-        <div key={i} className="flex items-center gap-4 px-5 py-3.5">
+    <div className="divide-y divide-overlay0/20">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div key={i} className="flex items-center gap-4 px-4 py-3.5 sm:px-5">
+          <div className="h-9 w-9 shrink-0 animate-pulse rounded-lg bg-surface1" />
           <div className="flex-1 space-y-2">
-            <div className="h-4 w-28 animate-pulse rounded bg-surface1" />
+            <div className="h-4 w-32 animate-pulse rounded bg-surface1" />
             <div className="h-3 w-20 animate-pulse rounded bg-surface1" />
           </div>
-          <div className="h-5 w-12 animate-pulse rounded-full bg-surface1" />
+          <div className="h-5 w-14 animate-pulse rounded-full bg-surface1" />
         </div>
       ))}
     </div>
   )
 }
 
-function PaginationControls({
+function PaginationBar({
   page,
   perPage,
   total,
@@ -1355,8 +1306,8 @@ function PaginationControls({
   const to = Math.min(page * perPage, total)
 
   return (
-    <div className="flex items-center justify-between border-t border-overlay0/30 px-5 py-3">
-      <p className="mb-0 text-xs text-subtext0">
+    <div className="flex items-center justify-between border-t border-overlay0/30 px-4 py-2.5 sm:px-5">
+      <p className="mb-0 font-mono text-xs text-subtext0">
         {from}&ndash;{to} of {total}
       </p>
       <div className="flex items-center gap-1">
@@ -1365,10 +1316,11 @@ function PaginationControls({
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
           className="flex h-7 w-7 items-center justify-center rounded-md text-subtext0 transition-colors duration-150 hover:bg-surface1 disabled:pointer-events-none disabled:opacity-30"
+          aria-label="Previous page"
         >
           <ChevronLeft size={14} />
         </button>
-        <span className="px-2 font-mono text-xs text-subtext0">
+        <span className="min-w-[3rem] px-1 text-center font-mono text-xs text-subtext0">
           {page}/{totalPages}
         </span>
         <button
@@ -1376,6 +1328,7 @@ function PaginationControls({
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
           className="flex h-7 w-7 items-center justify-center rounded-md text-subtext0 transition-colors duration-150 hover:bg-surface1 disabled:pointer-events-none disabled:opacity-30"
+          aria-label="Next page"
         >
           <ChevronRight size={14} />
         </button>
@@ -1384,7 +1337,9 @@ function PaginationControls({
   )
 }
 
-/* ──── Item Rows ──── */
+/* ════════════════════════════════════════════════
+   Row Components
+   ════════════════════════════════════════════════ */
 
 function VideoRow({
   video,
@@ -1394,38 +1349,42 @@ function VideoRow({
 }: {
   video: Video
   index: number
-  onEdit: (video: Video) => void
-  onDelete: (id: number, name: string) => void
+  onEdit: () => void
+  onDelete: () => void
 }) {
   const typeLabel = VIDEO_TYPE_LABELS[video.type] ?? video.type
   const isActive = video.status === 'active'
+
   return (
     <div
-      className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-surface1/50"
+      className="group flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-surface1/40 sm:gap-4 sm:px-5"
       style={staggerStyle(index)}
     >
+      {/* Icon */}
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/8">
+        <Film size={16} className="text-accent/70" />
+      </div>
+
+      {/* Info */}
       <div className="min-w-0 flex-1">
-        <p className="mb-0 truncate text-sm font-medium text-text">
-          {video.title}
-        </p>
+        <p className="mb-0 truncate text-sm font-medium text-text">{video.title}</p>
         <p className="mb-0 truncate text-xs text-subtext0">
           {video.state_name}
           {video.sublocation_name ? ` \u00B7 ${video.sublocation_name}` : ''}
         </p>
       </div>
-      <span className="shrink-0 rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent">
+
+      {/* Badges */}
+      <span className="hidden shrink-0 rounded-md bg-surface1 px-2 py-0.5 font-mono text-[10px] font-medium text-subtext0 sm:inline">
         {typeLabel}
       </span>
-      <span
-        className={`inline-flex shrink-0 items-center gap-1.5 text-xs font-medium ${isActive ? 'text-teal' : 'text-subtext0'}`}
-      >
-        <span
-          className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-teal' : 'bg-overlay2'}`}
-        />
-        {isActive ? 'Live' : 'Off'}
-      </span>
-      <EditBtn onClick={() => onEdit(video)} />
-      <DeleteBtn onClick={() => onDelete(video.video_id, video.title)} />
+      <StatusDot active={isActive} label={isActive ? 'Live' : 'Off'} />
+
+      {/* Actions */}
+      <div className="flex shrink-0 items-center gap-0.5 opacity-40 transition-opacity duration-150 group-hover:opacity-100">
+        <ActionBtn icon={Pencil} onClick={onEdit} label="Edit" />
+        <ActionBtn icon={Trash2} onClick={onDelete} label="Delete" variant="danger" />
+      </div>
     </div>
   )
 }
@@ -1438,27 +1397,28 @@ function StateRow({
 }: {
   state: State
   index: number
-  onEdit: (state: State) => void
-  onDelete: (slug: string, name: string) => void
+  onEdit: () => void
+  onDelete: () => void
 }) {
   return (
     <div
-      className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-surface1/50"
+      className="group flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-surface1/40 sm:gap-4 sm:px-5"
       style={staggerStyle(index)}
     >
-      <div className="min-w-0 flex-1">
-        <p className="mb-0 truncate text-sm font-medium text-text">
-          {state.name}
-        </p>
-        <p className="mb-0 text-xs text-subtext0">
-          {timeAgo(state.created_at)}
-        </p>
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/8">
+        <MapPin size={16} className="text-accent/70" />
       </div>
-      <span className="shrink-0 rounded-full bg-surface1 px-2.5 py-0.5 font-mono text-xs text-subtext0">
+      <div className="min-w-0 flex-1">
+        <p className="mb-0 truncate text-sm font-medium text-text">{state.name}</p>
+        <p className="mb-0 text-xs text-subtext0">{timeAgo(state.created_at)}</p>
+      </div>
+      <span className="shrink-0 rounded-md bg-surface1 px-2 py-0.5 font-mono text-[10px] font-medium text-subtext0">
         {state.video_count} cam{state.video_count !== 1 ? 's' : ''}
       </span>
-      <EditBtn onClick={() => onEdit(state)} />
-      <DeleteBtn onClick={() => onDelete(state.slug, state.name)} />
+      <div className="flex shrink-0 items-center gap-0.5 opacity-40 transition-opacity duration-150 group-hover:opacity-100">
+        <ActionBtn icon={Pencil} onClick={onEdit} label="Edit" />
+        <ActionBtn icon={Trash2} onClick={onDelete} label="Delete" variant="danger" />
+      </div>
     </div>
   )
 }
@@ -1471,32 +1431,28 @@ function SublocationRow({
 }: {
   sublocation: Sublocation
   index: number
-  onEdit: (sublocation: Sublocation) => void
-  onDelete: (id: number, name: string) => void
+  onEdit: () => void
+  onDelete: () => void
 }) {
   return (
     <div
-      className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-surface1/50"
+      className="group flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-surface1/40 sm:gap-4 sm:px-5"
       style={staggerStyle(index)}
     >
-      <div className="min-w-0 flex-1">
-        <p className="mb-0 truncate text-sm font-medium text-text">
-          {sublocation.name}
-        </p>
-        <p className="mb-0 truncate text-xs text-subtext0">
-          {sublocation.state_name}
-        </p>
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/8">
+        <Landmark size={16} className="text-accent/70" />
       </div>
-      <span className="shrink-0 rounded-full bg-surface1 px-2.5 py-0.5 font-mono text-xs text-subtext0">
-        {sublocation.video_count} cam
-        {sublocation.video_count !== 1 ? 's' : ''}
+      <div className="min-w-0 flex-1">
+        <p className="mb-0 truncate text-sm font-medium text-text">{sublocation.name}</p>
+        <p className="mb-0 truncate text-xs text-subtext0">{sublocation.state_name}</p>
+      </div>
+      <span className="shrink-0 rounded-md bg-surface1 px-2 py-0.5 font-mono text-[10px] font-medium text-subtext0">
+        {sublocation.video_count} cam{sublocation.video_count !== 1 ? 's' : ''}
       </span>
-      <EditBtn onClick={() => onEdit(sublocation)} />
-      <DeleteBtn
-        onClick={() =>
-          onDelete(sublocation.sublocation_id, sublocation.name)
-        }
-      />
+      <div className="flex shrink-0 items-center gap-0.5 opacity-40 transition-opacity duration-150 group-hover:opacity-100">
+        <ActionBtn icon={Pencil} onClick={onEdit} label="Edit" />
+        <ActionBtn icon={Trash2} onClick={onDelete} label="Delete" variant="danger" />
+      </div>
     </div>
   )
 }
@@ -1530,19 +1486,20 @@ function StreamRow({
     : isFailed
       ? 'bg-live'
       : 'bg-overlay2'
-
   const runtime = formatRuntime(stream.runtimeSeconds)
 
   return (
     <div
-      className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-surface1/50"
+      className="group flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-surface1/40 sm:gap-4 sm:px-5"
       style={staggerStyle(index)}
     >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/8">
+        <Radio size={16} className="text-accent/70" />
+      </div>
+
       <div className="min-w-0 flex-1">
-        <p className="mb-0 truncate text-sm font-medium text-text">
-          {stream.name}
-        </p>
-        <p className="mb-0 truncate text-xs text-subtext0">
+        <p className="mb-0 truncate text-sm font-medium text-text">{stream.name}</p>
+        <p className="mb-0 truncate font-mono text-[11px] text-subtext0">
           {runtime}
           {stream.fps ? ` \u00B7 ${stream.fps.toFixed(1)} fps` : ''}
           {stream.bitrateKbit
@@ -1551,73 +1508,89 @@ function StreamRow({
         </p>
       </div>
 
-      {/* Status badge */}
-      <span
-        className={`inline-flex shrink-0 items-center gap-1.5 text-xs font-medium ${statusColor}`}
-      >
-        <span className={`h-1.5 w-1.5 rounded-full ${dotColor}`} />
-        {stream.status}
+      {/* Status */}
+      <span className={`inline-flex shrink-0 items-center gap-1.5 text-xs font-medium ${statusColor}`}>
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${dotColor}`}
+          style={isRunning ? { animation: 'pulse-live 2s ease-in-out infinite' } : undefined}
+        />
+        <span className="hidden sm:inline">{stream.status}</span>
       </span>
 
-      {/* Copy HLS URL */}
-      <button
-        type="button"
-        onClick={onCopy}
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-subtext0 transition-colors duration-150 hover:bg-accent/10 hover:text-accent"
-        title={copied ? 'Copied!' : 'Copy HLS URL'}
-      >
-        {copied ? <Check size={14} className="text-teal" /> : <Copy size={14} />}
-      </button>
-
-      {/* Restart */}
-      <button
-        type="button"
-        onClick={onRestart}
-        disabled={restarting}
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-subtext0 transition-colors duration-150 hover:bg-accent/10 hover:text-accent disabled:pointer-events-none disabled:opacity-40"
-        title="Restart stream"
-      >
-        <RefreshCw
-          size={14}
-          className={restarting ? 'animate-spin' : ''}
-        />
-      </button>
-
-      {/* Delete */}
-      <DeleteBtn onClick={onDelete} />
+      {/* Actions */}
+      <div className="flex shrink-0 items-center gap-0.5 opacity-40 transition-opacity duration-150 group-hover:opacity-100">
+        <button
+          type="button"
+          onClick={onCopy}
+          className="flex h-7 w-7 items-center justify-center rounded-md text-subtext0 transition-colors duration-150 hover:bg-accent/10 hover:text-accent"
+          title={copied ? 'Copied!' : 'Copy HLS URL'}
+        >
+          {copied ? <Check size={14} className="text-teal" /> : <Copy size={14} />}
+        </button>
+        <button
+          type="button"
+          onClick={onRestart}
+          disabled={restarting}
+          className="flex h-7 w-7 items-center justify-center rounded-md text-subtext0 transition-colors duration-150 hover:bg-accent/10 hover:text-accent disabled:pointer-events-none disabled:opacity-40"
+          title="Restart stream"
+        >
+          <RefreshCw size={14} className={restarting ? 'animate-spin' : ''} />
+        </button>
+        <ActionBtn icon={Trash2} onClick={onDelete} label="Delete" variant="danger" />
+      </div>
     </div>
   )
 }
 
-/* ──── Row Action Buttons ──── */
+/* ════════════════════════════════════════════════
+   Shared — Small Components
+   ════════════════════════════════════════════════ */
 
-function EditBtn({ onClick }: { onClick: () => void }) {
+function StatusDot({ active, label }: { active: boolean; label: string }) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center gap-1.5 text-xs font-medium ${active ? 'text-teal' : 'text-subtext0'}`}
+    >
+      <span
+        className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-teal' : 'bg-overlay2'}`}
+        style={active ? { animation: 'pulse-live 2s ease-in-out infinite' } : undefined}
+      />
+      <span className="hidden sm:inline">{label}</span>
+    </span>
+  )
+}
+
+function ActionBtn({
+  icon: Icon,
+  onClick,
+  label,
+  variant = 'default',
+}: {
+  icon: typeof Pencil
+  onClick: () => void
+  label: string
+  variant?: 'default' | 'danger'
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-subtext0 transition-colors duration-150 hover:bg-accent/10 hover:text-accent"
-      title="Edit"
+      className={`flex h-7 w-7 items-center justify-center rounded-md text-subtext0 transition-colors duration-150 ${
+        variant === 'danger'
+          ? 'hover:bg-live/10 hover:text-live'
+          : 'hover:bg-accent/10 hover:text-accent'
+      }`}
+      title={label}
+      aria-label={label}
     >
-      <Pencil size={14} />
+      <Icon size={14} />
     </button>
   )
 }
 
-function DeleteBtn({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-subtext0 transition-colors duration-150 hover:bg-live/10 hover:text-live"
-      title="Delete"
-    >
-      <Trash2 size={14} />
-    </button>
-  )
-}
-
-/* ──── Confirm Delete Dialog ──── */
+/* ════════════════════════════════════════════════
+   Dialogs & Modals
+   ════════════════════════════════════════════════ */
 
 function ConfirmDeleteDialog({
   name,
@@ -1633,54 +1606,49 @@ function ConfirmDeleteDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div
-        className="mx-4 w-full max-w-sm rounded-xl border border-overlay0 bg-surface0 p-6 shadow-2xl"
+        className="mx-4 w-full max-w-sm overflow-hidden rounded-2xl border border-overlay0 bg-surface0 shadow-2xl"
         style={{
           opacity: 0,
           animation: 'scale-fade-in 250ms var(--spring-poppy) forwards',
         }}
       >
-        <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-live/10">
-            <Trash2 size={18} className="text-live" />
+        <div className="p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-live/10">
+              <Trash2 size={18} className="text-live" />
+            </div>
+            <div>
+              <h5 className="mb-0 !text-base font-semibold text-text">Confirm Delete</h5>
+              <p className="mb-0 text-xs text-subtext0">This cannot be undone.</p>
+            </div>
           </div>
-          <div>
-            <h5 className="mb-0 !text-base font-semibold text-text">
-              Confirm Delete
-            </h5>
-            <p className="mb-0 text-xs text-subtext0">
-              This action cannot be undone.
-            </p>
+          <p className="mb-5 text-sm text-subtext1">
+            Delete <span className="font-semibold text-text">{name}</span>?
+          </p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={deleting}
+              className="flex-1 rounded-lg border border-overlay0 bg-surface1 px-4 py-2.5 text-sm font-medium text-text transition-colors duration-150 hover:bg-surface2 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={deleting}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-live px-4 py-2.5 text-sm font-semibold text-white transition-all duration-150 hover:bg-live/90 active:scale-[0.97] disabled:opacity-60"
+            >
+              {deleting && <Loader2 size={14} className="animate-spin" />}
+              {deleting ? 'Deleting...' : 'Delete'}
+            </button>
           </div>
-        </div>
-        <p className="mb-5 text-sm text-subtext1">
-          Are you sure you want to delete{' '}
-          <span className="font-semibold text-text">{name}</span>?
-        </p>
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={deleting}
-            className="flex-1 rounded-lg border border-overlay0 bg-surface1 px-4 py-2 text-sm font-medium text-text transition-colors duration-150 hover:bg-surface2 disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={deleting}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-live px-4 py-2 text-sm font-semibold text-white transition-[background-color,opacity] duration-150 hover:bg-live/90 disabled:opacity-60"
-          >
-            {deleting && <Loader2 size={14} className="animate-spin" />}
-            {deleting ? 'Deleting...' : 'Delete'}
-          </button>
         </div>
       </div>
     </div>
   )
 }
-
-/* ──── Edit Modals ──── */
 
 function ModalShell({
   title,
@@ -1694,18 +1662,19 @@ function ModalShell({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div
-        className="mx-4 w-full max-w-md rounded-xl border border-overlay0 bg-surface0 shadow-2xl"
+        className="mx-4 w-full max-w-md overflow-hidden rounded-2xl border border-overlay0 bg-surface0 shadow-2xl"
         style={{
           opacity: 0,
           animation: 'scale-fade-in 250ms var(--spring-poppy) forwards',
         }}
       >
-        <div className="flex items-center justify-between border-b border-overlay0/50 px-5 py-3.5">
-          <h5 className="mb-0 !text-base font-semibold text-text">{title}</h5>
+        <div className="flex items-center justify-between border-b border-overlay0/50 px-5 py-4">
+          <h5 className="mb-0 !text-base font-display font-semibold text-text">{title}</h5>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-subtext0 transition-colors duration-150 hover:bg-surface1"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-subtext0 transition-colors duration-150 hover:bg-surface1 hover:text-text"
+            aria-label="Close"
           >
             <X size={16} />
           </button>
@@ -1715,6 +1684,8 @@ function ModalShell({
     </div>
   )
 }
+
+/* ──── Edit State Modal ──── */
 
 function EditStateModal({
   state,
@@ -1731,15 +1702,11 @@ function EditStateModal({
   const [description, setDescription] = useState(state.description)
   const [submitting, setSubmitting] = useState(false)
   const [msg, setMsg] = useState<FormMsg>(null)
-
   useAutoHide(msg, setMsg)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name) {
-      setMsg({ text: 'Name is required.', ok: false })
-      return
-    }
+    if (!name) { setMsg({ text: 'Name is required.', ok: false }); return }
     setSubmitting(true)
     setMsg(null)
     try {
@@ -1756,24 +1723,15 @@ function EditStateModal({
   return (
     <ModalShell title="Edit State" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <DashInput
-          label="State Name"
-          value={name}
-          onChange={setName}
-          placeholder="e.g. Florida"
-        />
-        <DashInput
-          label="Description"
-          value={description}
-          onChange={setDescription}
-          placeholder="Brief description (optional)"
-        />
-        <StatusBanner msg={msg} />
-        <SubmitBtn submitting={submitting} label="Save Changes" />
+        <FormField label="State Name" value={name} onChange={setName} placeholder="e.g. Florida" />
+        <FormField label="Description" value={description} onChange={setDescription} placeholder="Optional" />
+        <FormFooter msg={msg} submitting={submitting} label="Save Changes" />
       </form>
     </ModalShell>
   )
 }
+
+/* ──── Edit Sublocation Modal ──── */
 
 function EditSublocationModal({
   sublocation,
@@ -1793,24 +1751,16 @@ function EditSublocationModal({
   const [stateId, setStateId] = useState<number>(sublocation.state_id)
   const [submitting, setSubmitting] = useState(false)
   const [msg, setMsg] = useState<FormMsg>(null)
-
   useAutoHide(msg, setMsg)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name || !stateId) {
-      setMsg({ text: 'Name and state are required.', ok: false })
-      return
-    }
+    if (!name || !stateId) { setMsg({ text: 'Name and state are required.', ok: false }); return }
     setSubmitting(true)
     setMsg(null)
     try {
       const token = await getToken()
-      await updateSublocation(
-        sublocation.sublocation_id,
-        { name, description, state_id: stateId },
-        token,
-      )
+      await updateSublocation(sublocation.sublocation_id, { name, description, state_id: stateId }, token)
       onSuccess()
     } catch {
       setMsg({ text: 'Failed to update sublocation.', ok: false })
@@ -1822,33 +1772,21 @@ function EditSublocationModal({
   return (
     <ModalShell title="Edit Sublocation" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <DashInput
-          label="Sublocation Name"
-          value={name}
-          onChange={setName}
-          placeholder="e.g. Miami Beach"
-        />
+        <FormField label="Name" value={name} onChange={setName} placeholder="e.g. Miami Beach" />
         <Dropdown
           label="Parent State"
-          options={states.map((s) => ({
-            value: s.state_id,
-            label: s.name,
-          }))}
+          options={states.map((s) => ({ value: s.state_id, label: s.name }))}
           selectedValue={stateId}
           onSelect={(v) => setStateId(Number(v))}
         />
-        <DashInput
-          label="Description"
-          value={description}
-          onChange={setDescription}
-          placeholder="Brief description (optional)"
-        />
-        <StatusBanner msg={msg} />
-        <SubmitBtn submitting={submitting} label="Save Changes" />
+        <FormField label="Description" value={description} onChange={setDescription} placeholder="Optional" />
+        <FormFooter msg={msg} submitting={submitting} label="Save Changes" />
       </form>
     </ModalShell>
   )
 }
+
+/* ──── Edit Video Modal ──── */
 
 function EditVideoModal({
   video,
@@ -1869,13 +1807,10 @@ function EditVideoModal({
   const [src, setSrc] = useState(video.src)
   const [type, setType] = useState(video.type)
   const [stateId, setStateId] = useState<number>(video.state_id)
-  const [sublocationId, setSublocationId] = useState<number | ''>(
-    video.sublocation_id ?? '',
-  )
+  const [sublocationId, setSublocationId] = useState<number | ''>(video.sublocation_id ?? '')
   const [status, setStatus] = useState(video.status)
   const [submitting, setSubmitting] = useState(false)
   const [msg, setMsg] = useState<FormMsg>(null)
-
   useAutoHide(msg, setMsg)
 
   const filteredSubs = sublocations.filter((s) => s.state_id === stateId)
@@ -1890,18 +1825,14 @@ function EditVideoModal({
     setMsg(null)
     try {
       const token = await getToken()
-      await updateVideo(
-        video.video_id,
-        {
-          title,
-          src,
-          type,
-          state_id: stateId,
-          sublocation_id: sublocationId ? Number(sublocationId) : null,
-          status,
-        },
-        token,
-      )
+      await updateVideo(video.video_id, {
+        title,
+        src,
+        type,
+        state_id: stateId,
+        sublocation_id: sublocationId ? Number(sublocationId) : null,
+        status,
+      }, token)
       onSuccess()
     } catch {
       setMsg({ text: 'Failed to update camera.', ok: false })
@@ -1913,67 +1844,39 @@ function EditVideoModal({
   return (
     <ModalShell title="Edit Camera" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <DashInput
-          label="Title"
-          value={title}
-          onChange={setTitle}
-          placeholder="e.g. Miami Beach South Cam"
-        />
-        <DashInput
-          label="Source URL"
-          value={src}
-          onChange={setSrc}
-          placeholder="e.g. https://stream.example.com/live.m3u8"
-        />
-        <Dropdown
-          label="Video Type"
-          options={VIDEO_TYPE_OPTIONS}
-          selectedValue={type}
-          onSelect={(v) => setType(String(v))}
-        />
+        <FormField label="Title" value={title} onChange={setTitle} placeholder="Camera title" />
+        <FormField label="Source URL" value={src} onChange={setSrc} placeholder="Stream URL" />
+        <Dropdown label="Video Type" options={VIDEO_TYPE_OPTIONS} selectedValue={type} onSelect={(v) => setType(String(v))} />
         <Dropdown
           label="State"
-          options={states.map((s) => ({
-            value: s.state_id,
-            label: s.name,
-          }))}
+          options={states.map((s) => ({ value: s.state_id, label: s.name }))}
           selectedValue={stateId}
-          onSelect={(v) => {
-            setStateId(Number(v))
-            setSublocationId('')
-          }}
+          onSelect={(v) => { setStateId(Number(v)); setSublocationId('') }}
         />
         {filteredSubs.length > 0 && (
           <Dropdown
             label="Sublocation"
-            options={filteredSubs.map((s) => ({
-              value: s.sublocation_id,
-              label: s.name,
-            }))}
+            options={filteredSubs.map((s) => ({ value: s.sublocation_id, label: s.name }))}
             selectedValue={sublocationId}
             onSelect={(v) => setSublocationId(Number(v))}
           />
         )}
-        <Dropdown
-          label="Status"
-          options={STATUS_OPTIONS}
-          selectedValue={status}
-          onSelect={(v) => setStatus(String(v))}
-        />
-        <StatusBanner msg={msg} />
-        <SubmitBtn submitting={submitting} label="Save Changes" />
+        <Dropdown label="Status" options={STATUS_OPTIONS} selectedValue={status} onSelect={(v) => setStatus(String(v))} />
+        <FormFooter msg={msg} submitting={submitting} label="Save Changes" />
       </form>
     </ModalShell>
   )
 }
 
-/* ──── Utilities ──── */
+/* ════════════════════════════════════════════════
+   Utilities
+   ════════════════════════════════════════════════ */
 
 function staggerStyle(index: number): React.CSSProperties | undefined {
   if (index >= 10) return undefined
   return {
     opacity: 0,
-    animation: `fade-in-up 400ms var(--spring-smooth) ${index * 50}ms forwards`,
+    animation: `fade-in-up 350ms var(--spring-smooth) ${index * 40}ms forwards`,
   }
 }
 
